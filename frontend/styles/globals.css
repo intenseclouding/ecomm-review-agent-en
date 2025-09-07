@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Amazon Style Variables */
+:root {
+  --amazon-orange: #ff9900;
+  --amazon-blue: #232f3e;
+  --amazon-light-blue: #37475a;
+  --amazon-gray: #eaeded;
+  --amazon-dark-gray: #565959;
+  --amazon-white: #ffffff;
+  --amazon-hover: #f3f3f3;
+  --amazon-price: #b12704;
+}
+
+/* Amazon Style Components */
+.sidebar-container {
+  @apply w-70 bg-white border-r border-gray-200 h-screen overflow-y-auto fixed left-0 top-0 z-10;
+}
+
+/* 반응형 사이드바 */
+@media (max-width: 1024px) {
+  .sidebar-container {
+    @apply w-64; /* 태블릿에서 너비 축소 */
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar-container {
+    @apply w-60; /* 모바일에서 더 축소 */
+  }
+}
+
+.category-header {
+  @apply text-sm font-bold py-3 px-4 hover:bg-gray-50 cursor-pointer transition-colors duration-200;
+  color: var(--amazon-blue);
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.category-header:hover {
+  background-color: var(--amazon-hover);
+}
+
+.product-item {
+  @apply text-xs py-3 px-6 hover:bg-gray-50 cursor-pointer border-l-2 border-transparent transition-all duration-200;
+  color: var(--amazon-blue);
+  line-height: 1.4;
+}
+
+.product-item:hover {
+  background-color: var(--amazon-hover);
+  border-left-color: #ddd;
+}
+
+.product-item-active {
+  @apply border-l-orange-400 bg-orange-50;
+  color: var(--amazon-orange);
+}
+
+.product-item-active:hover {
+  background-color: #fff3e0;
+}
+
+.product-price {
+  @apply text-xs font-bold mt-1;
+  color: var(--amazon-price);
+}
+
+/* 사이드바 헤더 스타일 */
+.sidebar-header {
+  @apply p-4 border-b border-gray-200 bg-white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.sidebar-title {
+  @apply text-lg font-bold;
+  color: var(--amazon-blue);
+  font-family: 'Amazon Ember', Arial, sans-serif;
+}
+
+/* 카테고리 토글 아이콘 애니메이션 */
+.category-toggle {
+  @apply transition-transform duration-200 ease-in-out;
+}
+
+.category-toggle.expanded {
+  @apply rotate-90;
+}
+
+/* 사이드바 스크롤바 스타일 */
+.sidebar-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 제품 항목 내부 레이아웃 */
+.product-info {
+  @apply flex-1 min-w-0;
+}
+
+.product-name {
+  @apply font-medium text-sm truncate;
+  color: var(--amazon-blue);
+  line-height: 1.3;
+}
+
+.product-emoji {
+  @apply text-lg flex-shrink-0 mr-3;
+}

@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Documentation Sync",
+  "description": "Listens to all Python and TypeScript source files, as well as configuration files, and triggers documentation updates in README.md when changes occur",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.py",
+      "**/*.tsx",
+      "**/*.ts",
+      "**/*.js",
+      "**/requirements.txt",
+      "**/package.json",
+      "**/tsconfig.json",
+      "project_structure.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Source code files have been modified. Please review the changes and update the README.md file to reflect any new features, API changes, setup instructions, or architectural modifications. Ensure the documentation accurately represents the current state of the codebase including both the Python backend and TypeScript frontend components."
+  }
+}

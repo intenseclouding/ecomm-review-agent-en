@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import MediaUpload from './MediaUpload';
 
 interface ReviewFormProps {
   productId: string;
@@ -9,19 +10,19 @@ interface ReviewFormProps {
 
 const ReviewForm: React.FC<ReviewFormProps> = ({ productId, onSubmitted, onCancel }) => {
   const [formData, setFormData] = useState({
-    user_name: '',
     rating: 5,
     content: '',
     verified_purchase: true
   });
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.user_name.trim() || !formData.content.trim()) {
-      alert('이름과 리뷰 내용을 모두 입력해주세요.');
+    if (!formData.content.trim()) {
+      alert('리뷰 내용을 입력해주세요.');
       return;
     }
 
@@ -29,12 +30,30 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ productId, onSubmitted, onCance
     setSubmitStatus(null);
 
     try {
+      // FormData 객체 생성 (파일 업로드를 위해)
+      const formDataToSend = new FormData();
+      
+      // 텍스트 데이터 추가
+      formDataToSend.append('rating', formData.rating.toString());
+      formDataToSend.append('content', formData.content);
+      formDataToSend.append('verified_purchase', formData.verified_purchase.toString());
+      
+      // 미디어 파일 추가
+      mediaFiles.forEach((file) => {
+        formDataToSend.append('media_files', file);
+      });
+      
       const response = await axios.post(
         `http://localhost:8000/api/products/${productId}/reviews`,
-        formData
+        formDataToSend,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
       );
       
-      setSubmitStatus('✅ 리뷰가 성공적으로 등록되었습니다! 검수를 통과하여 자동 응답을 생성 중입니다...');
+      setSubmitStatus('✅ 리뷰가 성공적으로 등록되었습니다! 분석 대기 중입니다...');
       
       // 3초 후 폼 닫기
       setTimeout(() => {
@@ -44,18 +63,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ productId, onSubmitted, onCance
     } catch (error: any) {
       console.error('리뷰 등록 실패:', error);
       
-      // 검수 실패 시 상세한 에러 메시지 표시
-      if (error.response?.status === 400 && error.response?.data?.error === "리뷰 검수 실패") {
-        const errorData = error.response.data;
-        setSubmitStatus(
-          `❌ 리뷰 검수 실패: ${errorData.reason}\n` +
-          `심각도: ${errorData.severity_score}점\n` +
-          `문제점: ${errorData.issues?.join(', ') || '부적절한 내용 포함'}\n\n` +
-          `리뷰 내용을 수정한 후 다시 시도해주세요.`
-        );
-      } else {
-        setSubmitStatus('❌ 리뷰 등록에 실패했습니다. 다시 시도해주세요.');
-      }
+      setSubmitStatus('❌ 리뷰 등록에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSubmitting(false);
     }
@@ -82,23 +90,6 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ productId, onSubmitted, onCance
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="user_name" className="block text-sm font-medium text-gray-700 mb-2">
-            이름 *
-          </label>
-          <input
-            type="text"
-            id="user_name"
-            name="user_name"
-            value={formData.user_name}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="리뷰어 이름을 입력하세요"
-            disabled={isSubmitting}
-            required
-          />
-        </div>
-
         <div>
           <label htmlFor="rating" className="block text-sm font-medium text-gray-700 mb-2">
             평점 *
@@ -139,20 +130,10 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ productId, onSubmitted, onCance
           </p>
         </div>
 
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="verified_purchase"
-            name="verified_purchase"
-            checked={formData.verified_purchase}
-            onChange={handleInputChange}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            disabled={isSubmitting}
-          />
-          <label htmlFor="verified_purchase" className="ml-2 block text-sm text-gray-700">
-            구매 확인된 리뷰입니다
-          </label>
-        </div>
+        <MediaUpload
+          onFilesChange={setMediaFiles}
+          maxFiles={5}
+        />
 
         <div className="flex gap-4">
           <button
@@ -184,18 +165,17 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ productId, onSubmitted, onCance
       </form>
 
       <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-semibold text-blue-800 mb-2">🛡️ AI 검수 및 자동화 기능</h3>
+        <h3 className="font-semibold text-blue-800 mb-2">📝 리뷰 등록 안내</h3>
         <p className="text-sm text-blue-700">
-          리뷰 작성 후 Strands Agent가 자동으로:
+          리뷰 작성 후:
         </p>
         <ul className="text-sm text-blue-700 mt-2 list-disc list-inside">
-          <li><strong>1단계:</strong> 내용 검수 (공격적/선정적 언어 탐지)</li>
-          <li><strong>2단계:</strong> 검수 통과 시 감정 분석 및 키워드 추출</li>
-          <li><strong>3단계:</strong> 셀러 맞춤 자동 댓글 생성</li>
-          <li><strong>4단계:</strong> 댓글 품질 검증 및 승인</li>
+          <li><strong>1단계:</strong> 리뷰 등록 (즉시 저장)</li>
+          <li><strong>2단계:</strong> AI 분석 대기 상태로 설정</li>
+          <li><strong>3단계:</strong> 추후 분석 및 자동 응답 처리 예정</li>
         </ul>
-        <div className="mt-3 p-2 bg-yellow-100 rounded text-xs text-yellow-800">
-          ⚠️ 부적절한 내용이 포함된 리뷰는 검수 단계에서 자동으로 차단됩니다.
+        <div className="mt-3 p-2 bg-blue-100 rounded text-xs text-blue-800">
+          ℹ️ 현재 AI 자동화 기능이 비활성화되어 있습니다. 리뷰는 바로 등록됩니다.
         </div>
       </div>
     </div>

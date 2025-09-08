@@ -1,3 +1,8 @@
+# Remove test data
+*.png
+*.jpg
+*.jpeg
+
 # Dependencies
 node_modules/
 */node_modules/

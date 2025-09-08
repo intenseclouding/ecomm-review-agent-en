@@ -4,44 +4,21 @@ import AgentLogButton from './AgentLogButton';
 import KeywordTags from './KeywordTags';
 import SentimentIndicator from './SentimentIndicator';
 import HighlightedText from './HighlightedText';
-
-interface Review {
-  id: string;
-  user_name: string;
-  rating: number;
-  content: string;
-  date: string;
-  verified_purchase: boolean;
-  auto_response?: string;
-  response_approved: boolean;
-  agent_log_id?: string;
-  // 새로 추가된 분석 데이터
-  keywords?: string[];
-  sentiment?: {
-    label: string;
-    confidence: number;
-    polarity: number;
-  };
-  analysis_completed?: boolean;
-  analysis_timestamp?: string;
-  // 샘플 데이터의 seller_response도 지원
-  seller_response?: {
-    content: string;
-    date: string;
-  };
-}
+import MediaGallery from './MediaGallery';
+import { Review } from '../types/product';
 
 interface ReviewListProps {
   reviews: Review[];
   productFeatures?: string[];
+  onWriteReview?: () => void;
 }
 
-const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }) => {
+const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [], onWriteReview }) => {
   const [processingReviews, setProcessingReviews] = useState<Set<string>>(new Set());
 
   const handleApproveResponse = async (reviewId: string) => {
     setProcessingReviews(prev => new Set(prev).add(reviewId));
-    
+
     try {
       await axios.post(`http://localhost:8000/api/reviews/${reviewId}/approve-response`);
       // 성공 시 페이지 새로고침 또는 상태 업데이트
@@ -60,7 +37,7 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
 
   const handleRejectResponse = async (reviewId: string) => {
     setProcessingReviews(prev => new Set(prev).add(reviewId));
-    
+
     try {
       await axios.delete(`http://localhost:8000/api/reviews/${reviewId}/response`);
       // 성공 시 페이지 새로고침 또는 상태 업데이트
@@ -99,23 +76,41 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
       <div className="bg-white rounded-lg shadow-lg p-8 text-center">
         <p className="text-gray-500">아직 작성된 리뷰가 없습니다.</p>
         <p className="text-sm text-gray-400 mt-2">첫 번째 리뷰를 작성해보세요!</p>
+        {onWriteReview && (
+          <button
+            onClick={onWriteReview}
+            className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          >
+            ✍️ 리뷰 작성
+          </button>
+        )}
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-bold mb-6">
-        고객 리뷰 ({reviews.length})
-      </h2>
-      
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold">
+          고객 리뷰 ({reviews.length})
+        </h2>
+        {onWriteReview && (
+          <button
+            onClick={onWriteReview}
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          >
+            ✍️ 리뷰 작성
+          </button>
+        )}
+      </div>
+
       <div className="space-y-6">
         {reviews.map((review) => (
           <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
             {/* 리뷰 헤더 */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-3">
-                <span className="font-semibold">{review.user_name}</span>
+                <span className="font-semibold">{review.user_name || '익명 사용자'}</span>
                 {review.verified_purchase && (
                   <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
                     구매확인
@@ -139,12 +134,17 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
 
             {/* 리뷰 내용 (키워드 하이라이팅 적용) */}
             <div className="text-gray-800 mb-4 leading-relaxed">
-              <HighlightedText 
+              <HighlightedText
                 text={review.content}
                 keywords={review.keywords || []}
                 productFeatures={productFeatures}
               />
             </div>
+
+            {/* 미디어 파일 표시 */}
+            {review.media_files && review.media_files.length > 0 && (
+              <MediaGallery mediaFiles={review.media_files} />
+            )}
 
             {/* 키워드 및 감정 분석 결과 */}
             {(review.keywords || review.sentiment) && (
@@ -154,19 +154,19 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
                   {review.sentiment && (
                     <div className="flex items-center">
                       <span className="text-xs text-gray-600 mr-2">감정:</span>
-                      <SentimentIndicator 
-                        sentiment={review.sentiment} 
+                      <SentimentIndicator
+                        sentiment={review.sentiment}
                         showConfidence={true}
                         size="sm"
                       />
                     </div>
                   )}
-                  
+
                   {/* 키워드 태그 */}
                   {review.keywords && review.keywords.length > 0 && (
                     <div className="flex items-start flex-1">
                       <span className="text-xs text-gray-600 mr-2 mt-1">키워드:</span>
-                      <KeywordTags 
+                      <KeywordTags
                         keywords={review.keywords}
                         onKeywordClick={(keyword) => {
                           console.log(`키워드 클릭: ${keyword}`);
@@ -176,7 +176,7 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
                     </div>
                   )}
                 </div>
-                
+
                 {/* 분석 상태 표시 */}
                 {review.analysis_completed === false && (
                   <div className="mt-2 text-xs text-gray-500 flex items-center">
@@ -184,7 +184,7 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
                     AI 분석 중...
                   </div>
                 )}
-                
+
                 {review.analysis_completed && review.analysis_timestamp && (
                   <div className="mt-2 text-xs text-gray-400">
                     분석 완료: {new Date(review.analysis_timestamp).toLocaleString('ko-KR')}
@@ -205,7 +205,7 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
                       </span>
                     )}
                   </h4>
-                  
+
                   {!review.response_approved && (
                     <div className="flex space-x-2">
                       <button
@@ -225,7 +225,7 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
                     </div>
                   )}
                 </div>
-                
+
                 <p className="text-blue-700 text-sm mb-3">
                   {review.auto_response}
                 </p>
@@ -239,8 +239,8 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
                       </p>
                     )}
                   </div>
-                  <AgentLogButton 
-                    reviewId={review.id} 
+                  <AgentLogButton
+                    reviewId={review.id}
                     hasLog={!!review.agent_log_id}
                     className="ml-auto"
                   />
@@ -258,8 +258,8 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
                       AI 생성
                     </span>
                   </h4>
-                  <AgentLogButton 
-                    reviewId={review.id} 
+                  <AgentLogButton
+                    reviewId={review.id}
                     hasLog={!!review.agent_log_id}
                   />
                 </div>
@@ -275,14 +275,7 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold text-gray-800 flex items-center">
                     💬 셀러 댓글
-                    <span className="ml-2 bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
-                      샘플 데이터
-                    </span>
                   </h4>
-                  <AgentLogButton 
-                    reviewId={review.id} 
-                    hasLog={!!review.agent_log_id}
-                  />
                 </div>
                 <p className="text-gray-700 text-sm mb-2">
                   {review.seller_response.content}
@@ -296,41 +289,7 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [] }
         ))}
       </div>
 
-      {/* 통계 정보 */}
-      <div className="mt-8 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-          <div>
-            <p className="text-2xl font-bold text-blue-600">
-              {reviews.length}
-            </p>
-            <p className="text-sm text-gray-600">총 리뷰</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-green-600">
-              {reviews.filter(r => r.sentiment?.label === '긍정').length}
-            </p>
-            <p className="text-sm text-gray-600">긍정 리뷰</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-orange-600">
-              {reviews.filter(r => r.analysis_completed).length}
-            </p>
-            <p className="text-sm text-gray-600">분석 완료</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-purple-600">
-              {reviews.filter(r => r.response_approved).length}
-            </p>
-            <p className="text-sm text-gray-600">댓글 승인</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-yellow-600">
-              {(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)}
-            </p>
-            <p className="text-sm text-gray-600">평균 평점</p>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 };

@@ -17,6 +17,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
 
   const getImageName = (productId: string) => {
     const imageMap: { [key: string]: string } = {
@@ -128,67 +129,85 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
             </div>
           </div>
           
-          <div>
-            <div className="mb-4">
-              <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r ${productVisuals.gradient} text-white`}>
-                {product.category}
-              </span>
-            </div>
-            
-            <h1 className="text-4xl font-bold mb-4 text-gray-900">{product.name}</h1>
-            
-            <div className="flex items-center mb-6">
-              <p className="text-3xl font-bold text-blue-600 mr-4">
-                ₩{product.price.toLocaleString()}
-              </p>
-              <span className="bg-red-100 text-red-800 text-sm px-2 py-1 rounded-full font-medium">
-                무료배송
-              </span>
-            </div>
-            
-            <div className="flex items-center mb-6 p-4 bg-yellow-50 rounded-lg">
-              <StarRating 
-                rating={product.average_rating}
-                size="large"
-                showCount={true}
-                reviewCount={product.review_count}
-              />
-            </div>
-            
-            <p className="text-gray-700 mb-8 text-lg leading-relaxed">{product.description}</p>
-            
-            <div className="mb-8 p-6 bg-gray-50 rounded-lg">
-              <h3 className="font-bold mb-4 text-lg text-gray-800">✨ 주요 특징</h3>
-              <ul className="space-y-2">
-                {product.features.map((feature, index) => (
-                  <li key={`feature-${index}`} className="flex items-center text-gray-700">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            <div className="flex justify-center">
-              <button 
-                onClick={() => setShowReviewForm(true)}
-                className="px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                ✍️ 리뷰 작성
-              </button>
-            </div>
-            
-            {/* AI 자동화 안내 */}
-            <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center mb-2">
-                <span className="text-green-600 mr-2">🤖</span>
-                <span className="font-semibold text-green-800">AI 자동화 기능</span>
+          <div className="h-96 flex flex-col justify-between">
+            <div>
+              <div className="mb-1">
+                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${productVisuals.gradient} text-white`}>
+                  {product.category}
+                </span>
               </div>
-              <p className="text-green-700 text-sm">
-                리뷰 작성 시 Strands Agent가 자동으로 감정 분석, 키워드 추출, 스팸 탐지를 수행하고 
-                셀러 맞춤 댓글을 생성합니다.
-              </p>
+              
+              <h1 className="text-2xl font-bold mb-2 text-gray-900">{product.name}</h1>
+              
+              <div className="flex items-center justify-between mb-3 p-2 bg-gradient-to-r from-blue-50 to-yellow-50 rounded-lg">
+                <div className="flex items-center">
+                  <p className="text-xl font-bold text-blue-600 mr-2">
+                    ₩{product.price.toLocaleString()}
+                  </p>
+                  <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">
+                    무료배송
+                  </span>
+                </div>
+                <div className="flex items-center">
+                  <StarRating 
+                    rating={product.average_rating}
+                    size="small"
+                    showCount={true}
+                    reviewCount={product.review_count}
+                  />
+                </div>
+              </div>
+              
+              <p className="text-gray-700 mb-3 text-sm leading-relaxed">{product.description}</p>
+              
+              <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                <h3 className="font-bold mb-1 text-sm text-gray-800">✨ 주요 특징</h3>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                  {product.features.slice(0, 4).map((feature, index) => (
+                    <div key={`feature-${index}`} className="flex items-center text-gray-700 text-xs">
+                      <span className="w-1 h-1 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>
+                      <span className="truncate">{feature}</span>
+                    </div>
+                  ))}
+                  {product.features.length > 4 && (
+                    <div className="col-span-2 text-center mt-0.5">
+                      <button
+                        onClick={() => setShowFeaturesModal(true)}
+                        className="text-blue-600 hover:text-blue-800 text-xs font-medium hover:underline transition-colors duration-200"
+                      >
+                        +{product.features.length - 4}개 더 보기
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
+            
+            {/* 구매 버튼들 */}
+            <div className="space-y-2">
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => alert('구매 기능은 데모용입니다.')}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center"
+                >
+                  🛒 구매하기
+                </button>
+                <button 
+                  onClick={() => alert('장바구니 기능은 데모용입니다.')}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center"
+                >
+                  🛍️ 장바구니
+                </button>
+              </div>
+              
+              {/* 배송 정보 */}
+              <div className="text-center text-xs text-gray-600 bg-gray-50 rounded-lg p-1.5">
+                <span className="font-medium">🚚 오늘 주문 시 내일 도착</span>
+                <span className="mx-1">•</span>
+                <span>무료배송</span>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -215,7 +234,49 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
       <ReviewList 
         reviews={product.reviews} 
         productFeatures={product.features}
+        onWriteReview={() => setShowReviewForm(true)}
       />
+
+      {/* 전체 특징 모달 */}
+      {showFeaturesModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-96 overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                  ✨ {product.name} - 전체 특징
+                </h3>
+                <button
+                  onClick={() => setShowFeaturesModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold transition-colors duration-200"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-80">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {product.features.map((feature, index) => (
+                  <div key={`modal-feature-${index}`} className="flex items-start p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-1.5 flex-shrink-0"></span>
+                    <span className="text-gray-700 text-sm leading-relaxed">{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex justify-center">
+                <button
+                  onClick={() => setShowFeaturesModal(false)}
+                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 font-medium"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -102,11 +102,11 @@ const ReviewAnalytics: React.FC<ReviewAnalyticsProps> = ({ reviews, className = 
       <h3 className="text-lg font-semibold mb-6 flex items-center">
         📊 리뷰 분석 통계
         <span className="ml-2 text-sm text-gray-500">
-          ({analytics.analyzedCount}/{analytics.totalCount} 분석 완료)
+          (총 {analytics.totalCount}개)
         </span>
       </h3>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-3 gap-6">
         {/* 감정 분포 */}
         <div className="space-y-4">
           <h4 className="font-medium text-gray-800 flex items-center">
@@ -114,7 +114,7 @@ const ReviewAnalytics: React.FC<ReviewAnalyticsProps> = ({ reviews, className = 
           </h4>
           
           {analytics.sentimentStats.total > 0 ? (
-            <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
               {Object.entries(analytics.sentimentStats).map(([label, count]) => {
                 if (label === 'total') return null;
                 
@@ -123,44 +123,17 @@ const ReviewAnalytics: React.FC<ReviewAnalyticsProps> = ({ reviews, className = 
                   : 0;
                 
                 return (
-                  <div key={label} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <SentimentIndicator 
-                        sentiment={{ label, confidence: 1, polarity: 0 }}
-                        showConfidence={false}
-                        size="sm"
-                      />
-                      <span className="text-sm text-gray-600">
-                        {count}개 ({percentage}%)
-                      </span>
-                    </div>
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${
-                          label === '긍정' ? 'bg-green-500' :
-                          label === '부정' ? 'bg-red-500' : 'bg-gray-500'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
+                  <div key={label} className="flex items-center gap-1">
+                    <SentimentIndicator 
+                      sentiment={{ label, confidence: 1, polarity: 0 }}
+                      showConfidence={false}
+                      size="sm"
+                    />
+                    <span className="text-sm font-medium">{count}</span>
+                    <span className="text-xs text-gray-500">({percentage}%)</span>
                   </div>
                 );
               })}
-              
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600">
-                  평균 감정 점수: 
-                  <span className={`ml-1 font-medium ${
-                    analytics.avgSentimentScore > 0.2 ? 'text-green-600' :
-                    analytics.avgSentimentScore < -0.2 ? 'text-red-600' : 'text-gray-600'
-                  }`}>
-                    {analytics.avgSentimentScore.toFixed(2)}
-                  </span>
-                  <span className="text-xs text-gray-500 ml-1">
-                    (-1.0 ~ 1.0)
-                  </span>
-                </div>
-              </div>
             </div>
           ) : (
             <p className="text-gray-500 text-sm">분석된 리뷰가 없습니다.</p>
@@ -168,34 +141,20 @@ const ReviewAnalytics: React.FC<ReviewAnalyticsProps> = ({ reviews, className = 
         </div>
 
         {/* 키워드 빈도 */}
-        <div className="space-y-4">
+        <div className="space-y-4 col-span-2">
           <h4 className="font-medium text-gray-800 flex items-center">
             🏷️ 인기 키워드
           </h4>
+
           
           {analytics.keywordFrequencies.length > 0 ? (
-            <div className="space-y-3">
-              {analytics.keywordFrequencies.map((item, index) => (
-                <div key={item.keyword} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-500 w-4">
-                      {index + 1}.
-                    </span>
-                    <KeywordTags 
-                      keywords={[item.keyword]}
-                      className="flex-shrink-0"
-                    />
-                    <span className="text-sm text-gray-600">
-                      {item.count}회 ({item.percentage}%)
-                    </span>
-                  </div>
-                  <div className="w-20 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full bg-blue-500"
-                      style={{ width: `${Math.min(item.percentage * 2, 100)}%` }}
-                    />
-                  </div>
-                </div>
+            <div className="flex flex-wrap gap-2">
+              {analytics.keywordFrequencies.map((item) => (
+                <KeywordTags 
+                  key={item.keyword}
+                  keywords={[item.keyword]}
+                  className="flex-shrink-0"
+                />
               ))}
             </div>
           ) : (

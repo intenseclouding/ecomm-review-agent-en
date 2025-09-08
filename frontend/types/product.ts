@@ -56,10 +56,20 @@ export interface SellerResponse {
   date: string;
 }
 
+// 미디어 파일 타입
+export interface MediaFile {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  filename: string;
+  size: number;
+  thumbnail_url?: string;
+}
+
 // 리뷰 타입 (확장된 버전)
 export interface Review {
   id: string;
-  user_name: string;
+  user_name?: string;
   rating: number;
   content: string;
   date: string;
@@ -72,6 +82,7 @@ export interface Review {
   analysis_timestamp?: string;
   seller_response?: SellerResponse;
   agent_log_id?: string;
+  media_files?: MediaFile[];
 }
 
 // 제품 기본 정보 타입

@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .api import products, reviews
+import os
 
 app = FastAPI(
     title="제품 리뷰 자동화 API",
@@ -16,6 +18,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 정적 파일 서빙 (업로드된 미디어 파일)
+if os.path.exists("uploads"):
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # API 라우터 등록
 app.include_router(products.router, prefix="/api", tags=["products"])

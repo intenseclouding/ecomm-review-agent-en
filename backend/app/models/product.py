@@ -2,6 +2,14 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 from datetime import datetime
 
+class MediaFile(BaseModel):
+    id: str
+    type: str  # 'image' or 'video'
+    url: str
+    filename: str
+    size: int
+    thumbnail_url: Optional[str] = None
+
 class SellerResponse(BaseModel):
     content: str
     date: str
@@ -27,6 +35,9 @@ class Review(BaseModel):
     
     # Agent 로그 연결
     agent_log_id: Optional[str] = None
+    
+    # 미디어 파일
+    media_files: Optional[List[MediaFile]] = None
 
 class Product(BaseModel):
     id: str
@@ -45,7 +56,7 @@ class Product(BaseModel):
     rating_distribution: Dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
 
 class ReviewCreate(BaseModel):
-    user_name: str
+    user_name: Optional[str] = None
     rating: int
     content: str
     verified_purchase: bool = True

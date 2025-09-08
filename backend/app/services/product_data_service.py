@@ -76,6 +76,12 @@ class ProductDataService:
                     logger.warning(f"Invalid review data in product {product_data.get('id', 'unknown')}: {e}")
                     continue
             
+            # Return reviews in reverse order (latest first)
+            # reviews.sort(lambda x: x.analysis_timestamp, reverse=True)
+            
+            reviews = [r for r in reviews if r.analysis_completed]
+            reviews.sort(key=lambda x: x.analysis_timestamp, reverse=True)
+            
             # 계산된 필드 추가
             enhanced_data = product_data.copy()
             enhanced_data['reviews'] = reviews
@@ -110,7 +116,7 @@ class ProductDataService:
         
         return True
     
-    def load_all_products(self, force_reload: bool = False) -> List[Product]:
+    def load_all_products(self, force_reload: bool = True) -> List[Product]:
         """모든 제품 데이터 로드 (캐싱 지원)"""
         if self._products_cache is not None and not force_reload:
             return self._products_cache

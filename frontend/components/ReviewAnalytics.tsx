@@ -53,7 +53,7 @@ const ReviewAnalytics: React.FC<ReviewAnalyticsProps> = ({ reviews, className = 
         percentage: Math.round((count / analyzedReviews.length) * 100)
       }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 10); // 상위 10개만
+      .slice(0, 7); // 상위 7개만
 
     // 감정 분포 계산
     const sentimentStats: SentimentStats = {

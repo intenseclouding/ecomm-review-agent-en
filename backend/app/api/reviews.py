@@ -7,7 +7,8 @@ import sys
 import os
 import shutil
 from pathlib import Path
-
+import boto3
+from botocore.exceptions import ClientError
 # agents 모듈을 import하기 위한 경로 추가
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../agents'))
 
@@ -95,7 +96,21 @@ async def create_review(
     #                 "severity_score": moderation_info.get("severity_score", 0)
     #             }
     #         )
-    
+
+        ## Using lambda function as event handler
+        # lambda_client = boto3.client('lambda')
+        # lambda_client.invoke(
+        #     FunctionName="my-function-name",
+        #     InvocationType="Event",
+        #     Payload=json.dumps({
+        #         "product_id": product_id,
+        #         "rating": rating,
+        #         "content": content,
+        #         "verified_purchase": verified_purchase,
+        #         "user_name": user_name,
+        #         "media_files": [media_file.dict() for media_file in saved_media_files] if saved_media_files else None
+        #     })
+        # )
     # 2. 리뷰 저장 (검수 없이 바로 저장)
     try:
         # user_name이 제공되지 않은 경우 기본값 생성
@@ -135,6 +150,8 @@ async def create_review(
         #         product.seller_id
         #     )
         
+
+
         return {
             "message": "리뷰가 성공적으로 등록되었습니다.",
             "review_id": new_review.id,

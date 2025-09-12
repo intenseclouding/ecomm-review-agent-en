@@ -71,46 +71,13 @@ async def create_review(
                     size=file_path.stat().st_size
                 )
                 saved_media_files.append(media_file)
-    
-    # 1. 먼저 리뷰 내용 검수 수행 (주석 처리)
-    # try:
-    #     from review_analyzer.agent import moderate_and_analyze_review
-    #     moderation_result = moderate_and_analyze_review(content, product_id)
-    #     
-    #     # 검수 실패 시 에러 반환 (리뷰 저장하지 않음)
-    #     if not moderation_result["success"] and moderation_result.get("moderation_failed", False):
-    #         # 검수 실패 시 업로드된 파일 삭제
-    #         for media_file in saved_media_files:
-    #             file_path = Path(f"uploads/media/{Path(media_file.url).name}")
-    #             if file_path.exists():
-    #                 file_path.unlink()
-    #         
-    #         moderation_info = moderation_result.get("moderation_result", {})
-    #         raise HTTPException(
-    #             status_code=400, 
-    #             detail={
-    #                 "error": "리뷰 검수 실패",
-    #                 "reason": moderation_info.get("reason", "부적절한 내용이 포함되어 있습니다."),
-    #                 "decision": moderation_info.get("decision", "거부"),
-    #                 "issues": moderation_info.get("issues", []),
-    #                 "severity_score": moderation_info.get("severity_score", 0)
-    #             }
-    #         )
 
-        ## Using lambda function as event handler
-        # lambda_client = boto3.client('lambda')
-        # lambda_client.invoke(
-        #     FunctionName="my-function-name",
-        #     InvocationType="Event",
-        #     Payload=json.dumps({
-        #         "product_id": product_id,
-        #         "rating": rating,
-        #         "content": content,
-        #         "verified_purchase": verified_purchase,
-        #         "user_name": user_name,
-        #         "media_files": [media_file.dict() for media_file in saved_media_files] if saved_media_files else None
-        #     })
-        # )
+    #TODO
+    # 검수까지는 바로 진행 -> 여기까지는 UI에서 loading 보여주기
+    # 부적절하면 바로 Fail은 시키되 DB에는 저장
+    # 적절하면 UI Loading이 끝나고 DB에 저장
+    # 각 Step의 진행 상황을 UI에
+
     # 2. 리뷰 저장 (검수 없이 바로 저장)
     try:
         # user_name이 제공되지 않은 경우 기본값 생성

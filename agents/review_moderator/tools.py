@@ -177,7 +177,7 @@ def check_image_product_match(media_files: List[Dict], product_data: Dict) -> Di
         from pathlib import Path
         
         # Bedrock 클라이언트 초기화
-        bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
+        bedrock = boto3.client('bedrock-runtime', region_name='us-west-2')
         
         product_name = product_data.get("name", "")
         product_category = product_data.get("category", "")
@@ -367,8 +367,8 @@ def check_rating_consistency(rating: int, content: str) -> Dict[str, Any]:
         import boto3
         import json
         
-        # Bedrock 클라이언트 초기화 (이미지 검수와 동일)
-        bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
+        # Bedrock 클라이언트 초기화
+        bedrock = boto3.client('bedrock-runtime', region_name='us-west-2')
         
         # Claude에게 보낼 프롬프트
         prompt = f"""

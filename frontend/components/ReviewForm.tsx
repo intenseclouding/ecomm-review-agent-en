@@ -63,7 +63,27 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ productId, onSubmitted, onCance
     } catch (error: any) {
       console.error('리뷰 등록 실패:', error);
       
-      setSubmitStatus('❌ 리뷰 등록에 실패했습니다. 다시 시도해주세요.');
+      // 검수 실패 시 상세한 에러 메시지 표시
+      if (error.response?.status === 400 && error.response?.data?.detail) {
+        const errorDetail = error.response.data.detail;
+        let errorMessage = '❌ 리뷰 검수에 실패했습니다.\n\n';
+        
+        if (errorDetail.errors && Array.isArray(errorDetail.errors)) {
+          errorMessage += '실패 이유:\n';
+          errorDetail.errors.forEach((msg: string, index: number) => {
+            errorMessage += `${index + 1}. ${msg}\n`;
+          });
+        }
+        
+        if (errorDetail.moderation_summary) {
+          errorMessage += `\n상세 정보: ${errorDetail.moderation_summary}`;
+        }
+        
+        errorMessage += '\n\n리뷰는 저장되었지만 승인되지 않았습니다.';
+        setSubmitStatus(errorMessage);
+      } else {
+        setSubmitStatus('❌ 리뷰 등록에 실패했습니다. 다시 시도해주세요.');
+      }
     } finally {
       setIsSubmitting(false);
     }

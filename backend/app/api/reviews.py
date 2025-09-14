@@ -12,6 +12,14 @@ from botocore.exceptions import ClientError
 # agents 모듈을 import하기 위한 경로 추가
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../agents'))
 
+# 검수 Agent import
+try:
+    from review_moderator.agent import moderate_review, generate_error_messages
+except ImportError as e:
+    print(f"검수 Agent import 실패: {e}")
+    moderate_review = None
+    generate_error_messages = None
+
 from ..models.product import Product, Review, ReviewCreate, ReviewAnalysisResult, AutoResponseResult, AgentLog, MediaFile
 from ..services.database_service import database_service
 from ..services.agent_log_service import load_agent_log_by_id, load_agent_log_by_review_id
@@ -42,7 +50,10 @@ async def create_review(
     # 미디어 파일 처리
     saved_media_files = []
     if media_files:
-        upload_dir = Path("uploads/media")
+        # backend/uploads 디렉토리 사용 (정적 파일 서빙과 동일)
+        # backend/app/api/reviews.py -> backend/
+        backend_root = Path(__file__).parent.parent.parent
+        upload_dir = backend_root / "uploads" / "media"
         upload_dir.mkdir(parents=True, exist_ok=True)
         
         for file in media_files:
@@ -72,13 +83,46 @@ async def create_review(
                 )
                 saved_media_files.append(media_file)
 
-    #TODO
-    # 검수까지는 바로 진행 -> 여기까지는 UI에서 loading 보여주기
-    # 부적절하면 바로 Fail은 시키되 DB에는 저장
-    # 적절하면 UI Loading이 끝나고 DB에 저장
-    # 각 Step의 진행 상황을 UI에
-
-    # 2. 리뷰 저장 (검수 없이 바로 저장)
+    # 1. 검수 Agent 실행
+    moderation_result = None
+    if moderate_review:
+        try:
+            # 미디어 파일 정보를 딕셔너리 형태로 변환
+            media_files_dict = []
+            if saved_media_files:
+                for media in saved_media_files:
+                    media_files_dict.append({
+                        "id": media.id,
+                        "type": media.type,
+                        "url": media.url,
+                        "filename": media.filename,
+                        "size": media.size
+                    })
+            
+            moderation_result = moderate_review(
+                review_content=content,
+                rating=rating,
+                product_data={
+                    "id": product.id,
+                    "name": product.name,
+                    "category": product.category
+                },
+                media_files=media_files_dict if media_files_dict else None
+            )
+            
+        except Exception as e:
+            print(f"검수 Agent 실행 중 오류: {e}")
+            moderation_result = {
+                "success": False,
+                "error": str(e),
+                "moderation_result": {
+                    "overall_status": "FAIL",
+                    "failed_checks": ["system_error"],
+                    "summary": "검수 시스템 오류"
+                }
+            }
+    
+    # 2. 리뷰 저장 (검수 결과와 관계없이 저장)
     try:
         # user_name이 제공되지 않은 경우 기본값 생성
         final_user_name = user_name or f"사용자{uuid.uuid4().hex[:6].upper()}"
@@ -91,7 +135,12 @@ async def create_review(
             date=datetime.now().strftime("%Y-%m-%d"),
             verified_purchase=verified_purchase,
             media_files=saved_media_files if saved_media_files else None,
-            analysis_completed=False  # 초기값을 False로 설정
+            analysis_completed=False,  # 초기값을 False로 설정
+            # 검수 결과 저장
+            moderation_status=moderation_result["moderation_result"]["overall_status"] if moderation_result else "PENDING",
+            moderation_results=json.dumps(moderation_result["moderation_result"]) if moderation_result else None,
+            moderation_timestamp=datetime.now().isoformat(),
+            is_approved=(moderation_result["moderation_result"]["overall_status"] == "PASS") if moderation_result else False
         )
         
         # 분석 결과가 있으면 함께 저장 (주석 처리)
@@ -107,25 +156,6 @@ async def create_review(
         # 데이터베이스에 리뷰 추가
         database_service.add_review(product_id, new_review)
         
-        # 백그라운드에서 자동 응답 생성 (주석 처리)
-        # if moderation_result["success"]:
-        #     background_tasks.add_task(
-        #         process_auto_response_only,
-        #         product_id,
-        #         new_review.id,
-        #         moderation_result.get("raw_analysis", {}),
-        #         product.seller_id
-        #     )
-        
-
-
-        return {
-            "message": "리뷰가 성공적으로 등록되었습니다.",
-            "review_id": new_review.id,
-            "status": "등록 완료 - 분석 대기 중...",
-            "analysis_completed": False
-        }
-        
     except Exception as e:
         print(f"리뷰 저장 중 오류 발생: {e}")
         raise HTTPException(
@@ -136,6 +166,35 @@ async def create_review(
                 "message": str(e)
             }
         )
+    
+    # 3. 검수 결과에 따른 응답 (try-catch 블록 밖에서 처리)
+    if moderation_result and moderation_result["moderation_result"]["overall_status"] == "FAIL":
+        # 검수 실패 시 에러 메시지와 함께 400 응답
+        error_messages = []
+        if generate_error_messages:
+            error_messages = generate_error_messages(moderation_result["moderation_result"])
+        else:
+            error_messages = ["리뷰 검수에 실패했습니다."]
+        
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "리뷰 검수에 실패했습니다.",
+                "errors": error_messages,
+                "failed_checks": moderation_result["moderation_result"].get("failed_checks", []),
+                "review_id": new_review.id,  # 실패해도 리뷰는 저장됨
+                "moderation_summary": moderation_result["moderation_result"].get("summary", "")
+            }
+        )
+    
+    # 검수 통과 시 성공 응답
+    return {
+        "message": "리뷰가 성공적으로 등록되었습니다.",
+        "review_id": new_review.id,
+        "status": "검수 통과 - 등록 완료",
+        "moderation_status": moderation_result["moderation_result"]["overall_status"] if moderation_result else "PENDING",
+        "analysis_completed": False
+    }
 
 @router.get("/products/{product_id}/reviews", response_model=List[Review])
 async def get_product_reviews(product_id: str):

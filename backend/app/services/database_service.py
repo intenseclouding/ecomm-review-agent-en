@@ -23,6 +23,13 @@ class DatabaseService:
         conn.row_factory = sqlite3.Row
         return conn
     
+    def _safe_get(self, row, key, default=None):
+        """sqlite3.Row에서 안전하게 값을 가져오는 헬퍼 메서드"""
+        try:
+            return row[key] if key in row.keys() else default
+        except (KeyError, IndexError):
+            return default
+    
     def _calculate_average_rating(self, reviews: List[Review]) -> float:
         if not reviews:
             return 0.0
@@ -120,6 +127,10 @@ class DatabaseService:
                 'sentiment': json.loads(row['sentiment']) if row['sentiment'] else None,
                 'analysis_completed': bool(row['analysis_completed']),
                 'analysis_timestamp': row['analysis_timestamp'],
+                'moderation_status': self._safe_get(row, 'moderation_status', 'PENDING'),
+                'moderation_results': self._safe_get(row, 'moderation_results'),
+                'moderation_timestamp': self._safe_get(row, 'moderation_timestamp'),
+                'is_approved': bool(self._safe_get(row, 'is_approved', False)),
                 'agent_log_id': row['agent_log_id'],
                 'seller_response': seller_response,
                 'media_files': media_files if media_files else None
@@ -127,10 +138,11 @@ class DatabaseService:
             
             reviews.append(Review(**review_data))
         
-        # Sort by analysis timestamp, latest first
-        completed_reviews = [r for r in reviews if r.analysis_completed]
-        completed_reviews.sort(key=lambda x: x.analysis_timestamp or '', reverse=True)
-        return completed_reviews
+        # 승인된 리뷰만 표시 (검수 통과한 리뷰)
+        approved_reviews = [r for r in reviews if r.is_approved]
+        # 날짜순으로 정렬 (최신순)
+        approved_reviews.sort(key=lambda x: x.date, reverse=True)
+        return approved_reviews
     
     def get_product_by_id(self, product_id: str) -> Optional[Product]:
         products = self.load_all_products()
@@ -148,15 +160,18 @@ class DatabaseService:
                 INSERT INTO reviews 
                 (id, product_id, user_name, rating, content, date, verified_purchase,
                  auto_response, response_approved, keywords, sentiment, 
-                 analysis_completed, analysis_timestamp, agent_log_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 analysis_completed, analysis_timestamp, agent_log_id,
+                 moderation_status, moderation_results, moderation_timestamp, is_approved)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 review.id, product_id, review.user_name, review.rating, review.content,
                 review.date, review.verified_purchase, review.auto_response,
                 review.response_approved,
                 json.dumps(review.keywords) if review.keywords else None,
                 json.dumps(review.sentiment) if review.sentiment else None,
-                review.analysis_completed, review.analysis_timestamp, review.agent_log_id
+                review.analysis_completed, review.analysis_timestamp, review.agent_log_id,
+                review.moderation_status, review.moderation_results, 
+                review.moderation_timestamp, review.is_approved
             ))
             
             # Add media files if any
@@ -275,6 +290,10 @@ class DatabaseService:
                 'sentiment': json.loads(row['sentiment']) if row['sentiment'] else None,
                 'analysis_completed': bool(row['analysis_completed']),
                 'analysis_timestamp': row['analysis_timestamp'],
+                'moderation_status': self._safe_get(row, 'moderation_status', 'PENDING'),
+                'moderation_results': self._safe_get(row, 'moderation_results'),
+                'moderation_timestamp': self._safe_get(row, 'moderation_timestamp'),
+                'is_approved': bool(self._safe_get(row, 'is_approved', False)),
                 'agent_log_id': row['agent_log_id'],
                 'seller_response': seller_response,
                 'media_files': media_files if media_files else None

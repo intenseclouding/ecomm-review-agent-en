@@ -6,7 +6,7 @@ from typing import Dict, List, Any, Optional
 @tool
 def check_profanity(content: str) -> Dict[str, Any]:
     """
-    Amazon Bedrock Guardrails를 사용하여 리뷰 내용의 선정적/욕설 표현을 검사합니다.
+    Amazon Bedrock Claude API 사용하여 리뷰 내용의 선정적/욕설 표현을 검수합니다.
     
     Args:
         content (str): 검사할 리뷰 내용
@@ -18,7 +18,7 @@ def check_profanity(content: str) -> Dict[str, Any]:
         import boto3
         import json
         
-        # Bedrock 클라이언트 초기화 (Claude 4.0 사용)
+        # Bedrock 클라이언트 초기화 (Claude 4.0 -> 3.5 사용)
         bedrock = boto3.client('bedrock-runtime', region_name='us-west-2')
         
         # Claude에게 보낼 프롬프트
@@ -46,7 +46,7 @@ def check_profanity(content: str) -> Dict[str, Any]:
 }}
 """
         
-        # Bedrock API 호출 (Claude Sonnet 4)
+        # Bedrock API 호출 (Claude Sonnet 4->3.5)
         response = bedrock.invoke_model(
             modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
             body=json.dumps({

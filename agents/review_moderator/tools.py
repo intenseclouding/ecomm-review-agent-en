@@ -18,81 +18,109 @@ def check_profanity(content: str) -> Dict[str, Any]:
         import boto3
         import json
         
-        # Bedrock 클라이언트 초기화
-        bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
+        # Bedrock 클라이언트 초기화 (Claude 4.0 사용)
+        bedrock = boto3.client('bedrock-runtime', region_name='us-west-2')
         
-        # Guardrail ID - AWS 콘솔에서 생성한 Guardrail ID를 사용해야 함
-        # 예시: "gdrail-abc123def456" 
-        # 실제 사용 시 AWS 콘솔에서 생성한 ID로 교체 필요
-        guardrail_id = "pxeygxjn9lqa"  # TODO: 실제 Guardrail ID로 교체
-        guardrail_version = "1"
+        # Claude에게 보낼 프롬프트
+        prompt = f"""
+다음 리뷰 내용이 부적절한 표현을 포함하고 있는지 검수해주세요:
+
+리뷰 내용: "{content}"
+
+검수 기준:
+1. 욕설, 비속어, 공격적 언어
+2. 성적, 선정적 표현
+3. 혐오 발언, 차별적 표현
+4. 위협적, 폭력적 표현
+5. 스팸성, 광고성 내용
+
+한국어의 미묘한 뉘앙스와 맥락을 고려하여 판단해주세요.
+
+응답은 다음 JSON 형식으로만 제공해주세요:
+{{
+  "is_appropriate": true/false,
+  "confidence": 0.0-1.0,
+  "detected_issues": ["감지된 문제점들"],
+  "severity": "low/medium/high",
+  "reason": "판단 근거"
+}}
+"""
         
-        # Bedrock Guardrails API 호출
-        response = bedrock.apply_guardrail(
-            guardrailIdentifier=guardrail_id,
-            guardrailVersion=guardrail_version,
-            source="INPUT",
-            content=[
-                {
-                    "text": {
-                        "text": content
+        # Bedrock API 호출 (Claude Sonnet 4)
+        response = bedrock.invoke_model(
+            modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 1000,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
                     }
-                }
-            ]
+                ]
+            })
         )
         
-        # Guardrail 결과 분석
-        action = response.get('action', 'NONE')
-        assessments = response.get('assessments', [])
+        # 응답 파싱
+        response_body = json.loads(response['body'].read())
+        claude_response = response_body['content'][0]['text']
         
-        if action == 'BLOCKED':
-            # 차단된 콘텐츠 - 부적절한 내용 감지
-            blocked_categories = []
-            severity_level = "medium"
+        # JSON 응답 파싱
+        try:
+            if "```json" in claude_response:
+                json_start = claude_response.find("```json") + 7
+                json_end = claude_response.find("```", json_start)
+                json_text = claude_response[json_start:json_end].strip()
+            elif "{" in claude_response and "}" in claude_response:
+                json_start = claude_response.find("{")
+                json_end = claude_response.rfind("}") + 1
+                json_text = claude_response[json_start:json_end]
+            else:
+                raise ValueError("JSON 형태를 찾을 수 없습니다.")
             
-            for assessment in assessments:
-                if 'topicPolicy' in assessment:
-                    blocked_categories.append("inappropriate_topic")
-                if 'contentPolicy' in assessment:
-                    content_policy = assessment['contentPolicy']
-                    for filter_type in ['hate', 'insults', 'misconduct', 'profanity', 'sexual', 'violence']:
-                        if filter_type in content_policy:
-                            filter_result = content_policy[filter_type]
-                            if filter_result.get('action') == 'BLOCKED':
-                                blocked_categories.append(filter_type)
-                                # 심각도 레벨 확인
-                                if filter_result.get('strength') == 'HIGH':
-                                    severity_level = "high"
+            moderation_result = json.loads(json_text)
             
-            reason = f"부적절한 콘텐츠가 감지되었습니다: {', '.join(blocked_categories)}"
-            
-            return {
-                "status": "FAIL",
-                "reason": reason,
-                "blocked_categories": blocked_categories,
-                "severity_level": severity_level,
-                "confidence": 0.95
-            }
-        else:
-            # 통과된 콘텐츠 - 적절한 내용
-            return {
-                "status": "PASS",
-                "reason": "적절한 표현입니다.",
-                "blocked_categories": [],
-                "severity_level": "none",
-                "confidence": 0.95
-            }
+            # 결과 반환
+            if moderation_result.get("is_appropriate", True):
+                return {
+                    "status": "PASS",
+                    "reason": moderation_result.get("reason", "적절한 표현입니다."),
+                    "confidence": moderation_result.get("confidence", 0.9),
+                    "severity": moderation_result.get("severity", "none")
+                }
+            else:
+                return {
+                    "status": "FAIL",
+                    "reason": moderation_result.get("reason", "부적절한 표현이 감지되었습니다."),
+                    "detected_issues": moderation_result.get("detected_issues", []),
+                    "severity": moderation_result.get("severity", "medium"),
+                    "confidence": moderation_result.get("confidence", 0.9)
+                }
+                
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"Claude 응답 파싱 실패, 정규식 폴백: {e}")
+            # 정규식 폴백으로 진행
             
     except Exception as e:
-        # Guardrails 실패 시 기존 정규식 방식으로 폴백
-        print(f"Bedrock Guardrails 오류, 정규식 폴백: {e}")
+        # Claude API 실패 시 정규식 방식으로 폴백
+        print(f"Claude API 오류, 정규식 폴백: {e}")
         
-        # 간단한 폴백 로직 (기존 정규식 방식)
+        # 강화된 한국어 욕설/부적절 표현 패턴
         profanity_patterns = [
-            r'(씨발|시발|개새끼|병신|미친|좆|꺼져|죽어|바보|멍청)',
-            r'(섹스|성관계|야동|포르노|음란|변태)',
-            r'(개같은|개소리|개빡|개짜증|개못생긴)',
-            r'(쓰레기|똥|더러운|역겨운|구역질)'
+            # 강한 욕설
+            r'(씨발|시발|개새끼|병신|미친놈|좆|꺼져|죽어|개놈|새끼)',
+            # 성적 표현
+            r'(섹스|성관계|야동|포르노|음란|변태|야한|19금)',
+            # 공격적 표현
+            r'(개같은|개소리|개빡|개짜증|개못생긴|개쓰레기|개바보)',
+            # 혐오 표현
+            r'(쓰레기|똥|더러운|역겨운|구역질|토나와|징그러운)',
+            # 비하 표현
+            r'(바보|멍청|한심|찌질|루저|패배자|못생긴)',
+            # 위협적 표현
+            r'(죽이고|때리고|박살|망해|엿먹어|꺼져)',
+            # 차별적 표현
+            r'(장애인|정신병|미친|돌아이|또라이)'
         ]
         
         detected_words = []
@@ -104,13 +132,13 @@ def check_profanity(content: str) -> Dict[str, Any]:
                 detected_words.extend(matches)
                 severity_score += len(matches) * 10
         
-        # 심각도 평가
-        if severity_score >= 30:
+        # 심각도 평가 (더 엄격한 기준)
+        if severity_score >= 20:  # 30 -> 20으로 낮춤
             status = "FAIL"
-            reason = "심각한 욕설/선정적 표현이 포함되어 있습니다. (폴백 분석)"
-        elif severity_score >= 10:
+            reason = f"심각한 욕설/부적절 표현이 감지되었습니다: {', '.join(detected_words)} (폴백 분석)"
+        elif severity_score >= 5:  # 10 -> 5로 낮춤
             status = "FAIL"
-            reason = "부적절한 표현이 포함되어 있습니다. (폴백 분석)"
+            reason = f"부적절한 표현이 감지되었습니다: {', '.join(detected_words)} (폴백 분석)"
         else:
             status = "PASS"
             reason = "적절한 표현입니다. (폴백 분석)"
@@ -161,15 +189,14 @@ def check_image_product_match(media_files: List[Dict], product_data: Dict) -> Di
         # URL에서 실제 파일 경로 추출
         image_url = first_media.get("url", "")
         if image_url.startswith("/uploads/media/"):
-            # 올바른 backend/uploads/media/ 경로
-            current_file = Path(__file__)
             # agents/review_moderator/tools.py -> backend/uploads/media/
-            backend_dir = current_file.parent.parent.parent / "backend"
-            image_path = backend_dir / "uploads" / "media" / image_url.split("/")[-1]
+            current_file = Path(__file__).resolve()
+            project_root = current_file.parent.parent.parent
+            image_path = project_root / "backend" / "uploads" / "media" / image_url.split("/")[-1]
         else:
             return {
                 "status": "FAIL",
-                "reason": "이미지 파일 경로를 찾을 수 없습니다.",
+                "reason": f"지원하지 않는 이미지 URL 형식입니다: {image_url}",
                 "confidence": 0.0
             }
         

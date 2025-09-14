@@ -20,6 +20,7 @@ review_moderation_agent = Agent(
     - 명확한 근거와 함께 판단 결과 제시
     - 사용자 경험을 고려한 건설적 피드백 제공
     - 이미지가 없는 리뷰는 이미지 검수를 건너뛰고 나머지 2개 항목만 검사
+    - 이미지가 있는데 검증할 수 없거나 제품과 관련이 없으면 반드시 FAIL로 처리
     
     검수 결과는 반드시 다음 JSON 형태로 제공하세요:
     {
@@ -53,6 +54,11 @@ def moderate_review(
         Dict[str, Any]: 검수 결과
     """
     
+    # 미디어 파일 정보를 문자열로 변환
+    media_info = "없음"
+    if media_files and len(media_files) > 0:
+        media_info = f"{len(media_files)}개 - " + ", ".join([f"{m.get('filename', 'unknown')} ({m.get('url', 'no-url')})" for m in media_files])
+    
     moderation_prompt = f"""
     다음 리뷰를 종합적으로 검수해주세요:
     
@@ -60,21 +66,25 @@ def moderate_review(
     - 내용: "{review_content}"
     - 별점: {rating}점
     - 제품: {product_data.get('name', 'Unknown')} ({product_data.get('category', 'Unknown')})
-    - 이미지 개수: {len(media_files) if media_files else 0}개
+    - 미디어 파일: {media_info}
     
     다음 단계로 검수를 진행하세요:
     
     1. check_profanity 도구를 사용하여 선정적/욕설 표현을 검사하세요.
+       - 매개변수: content="{review_content}"
     
     2. 이미지가 있는 경우에만 check_image_product_match 도구를 사용하여 이미지-제품 매칭을 검증하세요.
-       이미지가 없으면 이 검수는 건너뛰세요.
+       - 이미지가 없으면 이 검수는 건너뛰세요.
+       - 매개변수: media_files={media_files}, product_data={product_data}
     
     3. check_rating_consistency 도구를 사용하여 별점과 내용의 일치성을 분석하세요.
+       - 매개변수: rating={rating}, content="{review_content}"
     
     4. 모든 검수 결과를 종합하여 최종 판단을 내리세요.
        - 실행된 모든 검수 항목이 PASS여야 전체 PASS
        - 하나라도 FAIL이면 전체 FAIL
        - SKIP된 항목은 전체 결과에 영향을 주지 않음
+       - 중요: 이미지가 있는데 검증에 실패하면 SKIP이 아닌 FAIL로 처리해야 함
     
     반드시 지정된 JSON 형태로 결과를 제공하세요.
     """
@@ -83,7 +93,7 @@ def moderate_review(
         result = review_moderation_agent(moderation_prompt)
         
         # Agent 응답에서 JSON 추출
-        response_text = result.message
+        response_text = str(result)
         
         # JSON 파싱 시도 - 여러 방법으로 시도
         try:
@@ -133,25 +143,7 @@ def moderate_review(
                 
                 # 이미지 검사 (있는 경우에만)
                 if media_files and len(media_files) > 0:
-                    # 이미지 파일 경로 확인
-                    from pathlib import Path
-                    image_url = media_files[0].get("url", "")
-                    if image_url.startswith("/uploads/media/"):
-                        # 올바른 경로: agents/review_moderator/agent.py -> backend/uploads/media/
-                        current_file = Path(__file__).resolve()
-                        project_root = current_file.parent.parent.parent
-                        image_path = project_root / "backend" / "uploads" / "media" / image_url.split("/")[-1]
-                        
-                        if not image_path.exists():
-                            image_result = {
-                                "status": "FAIL",
-                                "reason": f"이미지 파일이 존재하지 않습니다: {image_path}",
-                                "confidence": 0.0
-                            }
-                        else:
-                            image_result = check_image_product_match(media_files, product_data)
-                    else:
-                        image_result = check_image_product_match(media_files, product_data)
+                    image_result = check_image_product_match(media_files, product_data)
                     checks_performed = ["profanity_check", "image_match", "rating_consistency"]
                 else:
                     image_result = {"status": "SKIP", "reason": "업로드된 이미지가 없습니다.", "confidence": 1.0}

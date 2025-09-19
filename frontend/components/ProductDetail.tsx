@@ -17,6 +17,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
+
   const [showFeaturesModal, setShowFeaturesModal] = useState(false);
 
   const getImageName = (productId: string) => {
@@ -32,6 +34,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
 
   useEffect(() => {
     fetchProduct();
+    setSelectedKeyword(null); // 제품 변경 시 키워드 필터 초기화
   }, [productId]);
 
   const fetchProduct = async () => {
@@ -212,29 +215,62 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
         </div>
       </div>
 
-      {/* 리뷰 작성 폼 */}
+      {/* 리뷰 작성 폼 (토글 방식) */}
       {showReviewForm && (
-        <div className="mb-8">
-          <ReviewForm 
-            productId={product.id}
-            onSubmitted={handleReviewSubmitted}
-            onCancel={() => setShowReviewForm(false)}
-          />
+        <div className="mb-8 animate-in slide-in-from-top duration-300">
+          <div className="bg-white rounded-lg shadow-lg border border-blue-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-50">
+              <h3 className="text-lg font-semibold text-blue-800 flex items-center">
+                ✍️ 리뷰 작성
+              </h3>
+              <button
+                onClick={() => {
+                  console.log('리뷰 작성 폼 닫기');
+                  setShowReviewForm(false);
+                }}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold transition-colors duration-200"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4">
+              <ReviewForm 
+                productId={product.id}
+                onSubmitted={handleReviewSubmitted}
+                onCancel={() => setShowReviewForm(false)}
+              />
+            </div>
+          </div>
         </div>
       )}
 
       {/* 리뷰 분석 통계 */}
       {product.reviews.length > 0 && (
         <div className="mb-8">
-          <ReviewAnalytics reviews={product.reviews} />
+          <ReviewAnalytics 
+            reviews={product.reviews} 
+            onKeywordClick={setSelectedKeyword}
+          />
         </div>
       )}
 
       {/* 리뷰 목록 */}
       <ReviewList 
-        reviews={product.reviews} 
+        reviews={selectedKeyword 
+          ? product.reviews.filter(review => 
+              review.keywords?.includes(selectedKeyword)
+            )
+          : product.reviews
+        } 
         productFeatures={product.features}
-        onWriteReview={() => setShowReviewForm(true)}
+        selectedKeyword={selectedKeyword}
+        onKeywordClick={(keyword) => {
+          setSelectedKeyword(selectedKeyword === keyword ? null : keyword);
+        }}
+        onWriteReview={() => {
+          console.log('ProductDetail: 리뷰 작성 폼 표시');
+          setShowReviewForm(true);
+        }}
       />
 
       {/* 전체 특징 모달 */}

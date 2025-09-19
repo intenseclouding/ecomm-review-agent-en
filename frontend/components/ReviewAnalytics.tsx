@@ -17,6 +17,7 @@ interface Review {
 interface ReviewAnalyticsProps {
   reviews: Review[];
   className?: string;
+  onKeywordClick?: (keyword: string) => void;
 }
 
 interface KeywordFrequency {
@@ -32,7 +33,11 @@ interface SentimentStats {
   total: number;
 }
 
-const ReviewAnalytics: React.FC<ReviewAnalyticsProps> = ({ reviews, className = "" }) => {
+const ReviewAnalytics: React.FC<ReviewAnalyticsProps> = ({ 
+  reviews, 
+  className = "",
+  onKeywordClick 
+}) => {
   const analytics = useMemo(() => {
     const analyzedReviews = reviews.filter(r => r.analysis_completed);
     
@@ -150,11 +155,16 @@ const ReviewAnalytics: React.FC<ReviewAnalyticsProps> = ({ reviews, className = 
           {analytics.keywordFrequencies.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {analytics.keywordFrequencies.map((item) => (
-                <KeywordTags 
-                  key={item.keyword}
-                  keywords={[item.keyword]}
-                  className="flex-shrink-0"
-                />
+                <div key={item.keyword} className="flex items-center gap-1">
+                  <KeywordTags 
+                    keywords={[item.keyword]}
+                    className="flex-shrink-0"
+                    onKeywordClick={onKeywordClick}
+                  />
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    {item.count}회
+                  </span>
+                </div>
               ))}
             </div>
           ) : (

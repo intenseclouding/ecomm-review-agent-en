@@ -10,10 +10,18 @@ import { Review } from '../types/product';
 interface ReviewListProps {
   reviews: Review[];
   productFeatures?: string[];
+  selectedKeyword?: string | null;
+  onKeywordClick?: (keyword: string) => void;
   onWriteReview?: () => void;
 }
 
-const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [], onWriteReview }) => {
+const ReviewList: React.FC<ReviewListProps> = ({ 
+  reviews, 
+  productFeatures = [], 
+  selectedKeyword,
+  onKeywordClick,
+  onWriteReview 
+}) => {
   const [processingReviews, setProcessingReviews] = useState<Set<string>>(new Set());
 
   const handleApproveResponse = async (reviewId: string) => {
@@ -74,15 +82,33 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [], 
   if (reviews.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-        <p className="text-gray-500">아직 작성된 리뷰가 없습니다.</p>
-        <p className="text-sm text-gray-400 mt-2">첫 번째 리뷰를 작성해보세요!</p>
-        {onWriteReview && (
-          <button
-            onClick={onWriteReview}
-            className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-          >
-            ✍️ 리뷰 작성
-          </button>
+        {selectedKeyword ? (
+          <>
+            <p className="text-gray-500">"{selectedKeyword}" 키워드가 포함된 리뷰가 없습니다.</p>
+            <p className="text-sm text-gray-400 mt-2">다른 키워드를 선택하거나 필터를 해제해보세요.</p>
+            <button
+              onClick={() => onKeywordClick?.(selectedKeyword)}
+              className="mt-4 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              필터 해제
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-gray-500">아직 작성된 리뷰가 없습니다.</p>
+            <p className="text-sm text-gray-400 mt-2">첫 번째 리뷰를 작성해보세요!</p>
+            {onWriteReview && (
+              <button
+                onClick={() => {
+                  console.log('리뷰 작성 버튼 클릭됨 (리뷰 없음)');
+                  onWriteReview();
+                }}
+                className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 cursor-pointer z-10 relative"
+              >
+                ✍️ 리뷰 작성
+              </button>
+            )}
+          </>
         )}
       </div>
     );
@@ -91,13 +117,33 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [], 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">
-          고객 리뷰 ({reviews.length})
-        </h2>
+        <div>
+          <h2 className="text-2xl font-bold">
+            고객 리뷰 ({reviews.length})
+          </h2>
+          {selectedKeyword && (
+            <div className="flex items-center mt-2">
+              <span className="text-sm text-gray-600 mr-2">필터링:</span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                #{selectedKeyword}
+                <button
+                  onClick={() => onKeywordClick?.(selectedKeyword)}
+                  className="ml-2 text-blue-600 hover:text-blue-800"
+                  title="필터 해제"
+                >
+                  ✕
+                </button>
+              </span>
+            </div>
+          )}
+        </div>
         {onWriteReview && (
           <button
-            onClick={onWriteReview}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            onClick={() => {
+              console.log('리뷰 작성 버튼 클릭됨 (리뷰 있음)');
+              onWriteReview();
+            }}
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 cursor-pointer z-10 relative"
           >
             ✍️ 리뷰 작성
           </button>
@@ -168,10 +214,9 @@ const ReviewList: React.FC<ReviewListProps> = ({ reviews, productFeatures = [], 
                       <span className="text-xs text-gray-600 mr-2 mt-1">키워드:</span>
                       <KeywordTags
                         keywords={review.keywords}
-                        onKeywordClick={(keyword) => {
-                          console.log(`키워드 클릭: ${keyword}`);
-                          // 향후 키워드 필터링 기능 구현 예정
-                        }}
+                        selectedKeyword={selectedKeyword}
+                        onKeywordClick={onKeywordClick}
+                        className={selectedKeyword ? 'opacity-75' : ''}
                       />
                     </div>
                   )}

@@ -20,6 +20,37 @@ except ImportError as e:
     moderate_review = None
     generate_error_messages = None
 
+# sentiment_analyzer import
+try:
+    from sentiment_analyzer.agent import analyze_review
+    print("✅ sentiment_analyzer 시스템 로드 성공")
+except ImportError as e:
+    print(f"❌ sentiment_analyzer import 실패: {e}")
+    analyze_review = None
+
+# keyword_extractor import
+try:
+    from keyword_extractor.agent import keyword_extractor_agent
+    from keyword_extractor.tools import extract_keywords, upsert_review, search_reviews_by_keyword, KeywordExtractorTools, set_db_path
+    
+    # 키워드 추출기 데이터베이스 초기화
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    db_path = os.path.join(project_root, 'ecommerce_reviews.db')
+    set_db_path(db_path)
+    
+    # 데이터베이스 스키마 초기화
+    tools = KeywordExtractorTools(db_path)
+    tools.init_database()
+    
+    print("✅ keyword_extractor 시스템 로드 성공")
+except ImportError as e:
+    print(f"❌ keyword_extractor import 실패: {e}")
+    keyword_extractor_agent = None
+    extract_keywords = None
+    upsert_review = None
+    search_reviews_by_keyword = None
+
 from ..models.product import Product, Review, ReviewCreate, ReviewAnalysisResult, AutoResponseResult, AgentLog, MediaFile
 from ..services.database_service import database_service
 from ..services.agent_log_service import load_agent_log_by_id, load_agent_log_by_review_id
@@ -31,6 +62,75 @@ router = APIRouter()
 def generate_review_id():
     """리뷰 ID 생성"""
     return f"REV-{uuid.uuid4().hex[:8].upper()}"
+
+
+async def run_analysis_agents(review_id: str, content: str):
+    """백그라운드에서 키워드 추출 및 감정분석 실행"""
+    print(f"🤖 리뷰 {review_id} 분석 시작...")
+    
+    analysis_results = {}
+    
+    # 키워드 추출 실행
+    if extract_keywords:
+        try:
+            keywords_result = extract_keywords(content)
+            analysis_results["keywords"] = keywords_result.get("keywords", [])
+            print(f"✅ 키워드 추출 완료: {keywords_result}")
+            
+            # 키워드 데이터베이스에 저장
+            if upsert_review and keywords_result.get("keywords"):
+                try:
+                    upsert_review(int(review_id.split('-')[1], 16), content, keywords_result["keywords"])
+                    print(f"✅ 키워드 DB 저장 완료: {keywords_result['keywords']}")
+                except Exception as e:
+                    print(f"❌ 키워드 DB 저장 실패: {e}")
+                    
+        except Exception as e:
+            print(f"❌ 키워드 추출 실패: {e}")
+            analysis_results["keywords"] = []
+    
+    # 감정분석 실행
+    if analyze_review:
+        try:
+            sentiment_analysis = analyze_review(content)
+            if sentiment_analysis["success"]:
+                sentiment_data = sentiment_analysis["sentiment_result"]
+                analysis_results["sentiment"] = {
+                    "label": sentiment_data["label"],
+                    "confidence": sentiment_data["score"],
+                    "polarity": 1.0 if sentiment_data["label"] == "긍정" else (-1.0 if sentiment_data["label"] == "부정" else 0.0)
+                }
+                print(f"✅ 감정분석 완료: {analysis_results['sentiment']}")
+            else:
+                analysis_results["sentiment"] = {"label": "NEU", "confidence": 0.5, "polarity": 0.0}
+                print("⚠️ 감정분석 실패, 기본값 사용")
+        except Exception as e:
+            print(f"❌ 감정분석 실패: {e}")
+            analysis_results["sentiment"] = {"label": "NEU", "confidence": 0.5, "polarity": 0.0}
+    
+    # 분석 결과를 리뷰에 업데이트
+    try:
+        update_data = {
+            "keywords": analysis_results.get("keywords", []),
+            "sentiment": analysis_results.get("sentiment", {"label": "중립", "confidence": 0.5, "polarity": 0.0}),
+            "analysis_completed": True
+        }
+        
+        # 리뷰 업데이트
+        review = database_service.get_review_by_id(review_id)
+        if review:
+            for field, value in update_data.items():
+                setattr(review, field, value)
+            review.analysis_timestamp = datetime.now().isoformat()
+            database_service.update_review(review)
+            print(f"✅ 리뷰 {review_id} 분석 결과 저장 완료")
+        else:
+            print(f"❌ 리뷰 {review_id}를 찾을 수 없음")
+            
+    except Exception as e:
+        print(f"❌ 분석 결과 저장 실패: {e}")
+    
+    print(f"🎉 리뷰 {review_id} 분석 완료!")
 
 @router.post("/products/{product_id}/reviews")
 async def create_review(
@@ -155,6 +255,10 @@ async def create_review(
         
         # 데이터베이스에 리뷰 추가
         database_service.add_review(product_id, new_review)
+        
+        # 검수 통과 시 키워드 추출 및 감정분석 자동 실행
+        if moderation_result and moderation_result["moderation_result"]["overall_status"] == "PASS":
+            background_tasks.add_task(run_analysis_agents, new_review.id, content)
         
     except Exception as e:
         print(f"리뷰 저장 중 오류 발생: {e}")
@@ -447,6 +551,49 @@ async def update_review(review_id: str, update_data: dict):
 #                         break
 #         except Exception as save_error:
 #             print(f"기본 데이터 저장 중 오류: {save_error}")
+
+@router.get("/keywords/{keyword}/reviews")
+async def search_reviews_by_keyword_api(keyword: str):
+    """키워드로 리뷰 검색"""
+    try:
+        # URL 디코딩
+        import urllib.parse
+        decoded_keyword = urllib.parse.unquote(keyword)
+        print(f"키워드 검색 요청: {keyword} -> {decoded_keyword}")
+        
+        # 키워드 검색 함수가 없으면 직접 import 시도
+        global search_reviews_by_keyword
+        if not search_reviews_by_keyword:
+            try:
+                from keyword_extractor.tools import search_reviews_by_keyword as search_func, KeywordExtractorTools, set_db_path
+                
+                # 데이터베이스 초기화
+                import os
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                db_path = os.path.join(project_root, 'ecommerce_reviews.db')
+                set_db_path(db_path)
+                
+                # 데이터베이스 스키마 초기화
+                tools = KeywordExtractorTools(db_path)
+                tools.init_database()
+                
+                search_reviews_by_keyword = search_func
+                print("✅ 키워드 검색 시스템 동적 로드 성공")
+            except Exception as init_error:
+                print(f"❌ 키워드 검색 시스템 동적 로드 실패: {init_error}")
+                raise HTTPException(status_code=503, detail="키워드 검색 서비스를 사용할 수 없습니다.")
+        
+        results = search_reviews_by_keyword(decoded_keyword)
+        return {
+            "keyword": decoded_keyword,
+            "results": results,
+            "count": len(results)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"키워드 검색 중 오류: {e}")
+        raise HTTPException(status_code=500, detail="키워드 검색 중 오류가 발생했습니다.")
 
 @router.get("/agent-logs/stats")
 async def get_agent_log_statistics():

@@ -48,7 +48,7 @@ export class RatingCalculator {
     reviews.forEach(review => {
       const rating = review.rating;
       if (rating && rating >= 1 && rating <= 5) {
-        distribution[rating]++;
+        distribution[rating as keyof typeof distribution]++;
       }
     });
 

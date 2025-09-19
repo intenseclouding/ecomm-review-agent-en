@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
 import logging
 from ..models.product import Product, Review, ReviewCreate
-from ..services.product_data_service import product_data_service
+from ..services.database_service import database_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 async def get_products():
     """모든 제품 목록 조회"""
     try:
-        products = product_data_service.load_all_products()
+        products = database_service.load_all_products()
         logger.info(f"Retrieved {len(products)} products")
         return products
     except Exception as e:
@@ -22,7 +22,7 @@ async def get_products():
 async def get_product_summaries():
     """모든 제품의 요약 정보 조회 (홈페이지, 사이드바용)"""
     try:
-        summaries = product_data_service.get_all_product_summaries()
+        summaries = database_service.get_all_product_summaries()
         logger.info(f"Retrieved {len(summaries)} product summaries")
         return summaries
     except Exception as e:
@@ -33,7 +33,7 @@ async def get_product_summaries():
 async def get_product(product_id: str):
     """특정 제품 상세 조회"""
     try:
-        product = product_data_service.get_product_by_id(product_id)
+        product = database_service.get_product_by_id(product_id)
         if not product:
             raise HTTPException(status_code=404, detail=f"Product not found: {product_id}")
         
@@ -49,7 +49,7 @@ async def get_product(product_id: str):
 async def get_products_by_category(category: str):
     """카테고리별 제품 조회"""
     try:
-        products = product_data_service.get_products_by_category(category)
+        products = [p for p in database_service.load_all_products() if p.category.lower() == category.lower()]
         logger.info(f"Retrieved {len(products)} products for category: {category}")
         return products
     except Exception as e:
@@ -60,7 +60,7 @@ async def get_products_by_category(category: str):
 async def get_products_by_seller(seller_id: str):
     """셀러별 제품 조회"""
     try:
-        products = product_data_service.get_products_by_seller(seller_id)
+        products = [p for p in database_service.load_all_products() if p.seller_id == seller_id]
         logger.info(f"Retrieved {len(products)} products for seller: {seller_id}")
         return products
     except Exception as e:
@@ -71,7 +71,7 @@ async def get_products_by_seller(seller_id: str):
 async def get_product_summary(product_id: str):
     """특정 제품의 요약 정보 조회"""
     try:
-        summary = product_data_service.get_product_summary(product_id)
+        summary = database_service.get_product_summary(product_id)
         if not summary:
             raise HTTPException(status_code=404, detail=f"Product not found: {product_id}")
         

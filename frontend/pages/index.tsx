@@ -159,28 +159,31 @@ export default function Home() {
           </div>
         )}
 
-        <div className="mt-12 bg-blue-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-800 mb-4">
-            🤖 AI 자동화 기능
-          </h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-blue-700">
-            <div>
-              <h4 className="font-semibold mb-2">리뷰 분석</h4>
-              <ul className="list-disc list-inside space-y-1">
-                <li>감정 분석 (긍정/부정/중립)</li>
-                <li>핵심 키워드 자동 추출</li>
-                <li>스팸/가짜 리뷰 탐지</li>
-                <li>주제별 카테고리 분류</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-2">자동 댓글 생성</h4>
-              <ul className="list-disc list-inside space-y-1">
-                <li>브랜드 맞춤 톤앤매너</li>
-                <li>감정에 적절한 응답</li>
-                <li>댓글 품질 자동 검증</li>
-                <li>셀러 승인 시스템</li>
-              </ul>
+        <div className="mt-12">
+          {/* AI 자동화 기능 */}
+          <div className="bg-blue-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-blue-800 mb-4">
+              🤖 AI 자동화 기능
+            </h3>
+            <div className="grid md:grid-cols-2 gap-4 text-sm text-blue-700">
+              <div>
+                <h4 className="font-semibold mb-2">리뷰 분석</h4>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>감정 분석 (긍정/부정/중립)</li>
+                  <li>핵심 키워드 자동 추출</li>
+                  <li>스팸/가짜 리뷰 탐지</li>
+                  <li>주제별 카테고리 분류</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">자동 댓글 생성</h4>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>브랜드 맞춤 톤앤매너</li>
+                  <li>감정에 적절한 응답</li>
+                  <li>댓글 품질 자동 검증</li>
+                  <li>셀러 승인 시스템</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>

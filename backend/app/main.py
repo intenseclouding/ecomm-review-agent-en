@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .api import products, reviews
+import os
 
 app = FastAPI(
     title="제품 리뷰 자동화 API",
@@ -16,6 +18,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 정적 파일 서빙 (업로드된 미디어 파일)
+backend_upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+project_upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
+
+# backend/uploads 우선 확인
+if os.path.exists(backend_upload_dir):
+    app.mount("/uploads", StaticFiles(directory=backend_upload_dir), name="uploads")
+    print(f"Serving uploads from: {backend_upload_dir}")
+elif os.path.exists(project_upload_dir):
+    app.mount("/uploads", StaticFiles(directory=project_upload_dir), name="uploads")
+    print(f"Serving uploads from: {project_upload_dir}")
+else:
+    print(f"Upload directories not found: {backend_upload_dir}, {project_upload_dir}")
 
 # API 라우터 등록
 app.include_router(products.router, prefix="/api", tags=["products"])

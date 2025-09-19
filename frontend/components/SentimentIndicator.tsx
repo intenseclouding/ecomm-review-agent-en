@@ -43,7 +43,7 @@ const SentimentIndicator: React.FC<SentimentIndicatorProps> = ({
         return '😞';
       case '중립':
       default:
-        return '😐';
+        return '';
     }
   };
 

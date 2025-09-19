@@ -3,13 +3,13 @@
  */
 
 import axios, { AxiosResponse } from 'axios';
-import { 
-  ProductSummary, 
-  ProductDetail, 
-  Review, 
+import {
+  ProductSummary,
+  ProductDetail,
+  Review,
   CacheEntry,
   ApiError,
-  LoadingState 
+  LoadingState
 } from '../types/product';
 
 // API 기본 설정
@@ -79,7 +79,7 @@ class ProductApiService {
    */
   async getProductSummaries(useCache: boolean = true): Promise<ProductSummary[]> {
     const cacheKey = 'product-summaries';
-    
+
     if (useCache) {
       const cached = this.cache.get<ProductSummary[]>(cacheKey);
       if (cached) {
@@ -91,10 +91,10 @@ class ProductApiService {
     try {
       const response: AxiosResponse<ProductSummary[]> = await this.axiosInstance.get('/products/summaries');
       const summaries = response.data;
-      
+
       this.cache.set(cacheKey, summaries);
       console.log(`Fetched ${summaries.length} product summaries from API`);
-      
+
       return summaries;
     } catch (error) {
       console.error('Error fetching product summaries:', error);
@@ -107,7 +107,7 @@ class ProductApiService {
    */
   async getProductDetail(productId: string, useCache: boolean = true): Promise<ProductDetail> {
     const cacheKey = `product-detail-${productId}`;
-    
+
     if (useCache) {
       const cached = this.cache.get<ProductDetail>(cacheKey);
       if (cached) {
@@ -119,10 +119,10 @@ class ProductApiService {
     try {
       const response: AxiosResponse<ProductDetail> = await this.axiosInstance.get(`/products/${productId}`);
       const product = response.data;
-      
+
       this.cache.set(cacheKey, product);
       console.log(`Fetched product detail for ${productId} from API`);
-      
+
       return product;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -138,7 +138,7 @@ class ProductApiService {
    */
   async getProductSummary(productId: string, useCache: boolean = true): Promise<ProductSummary> {
     const cacheKey = `product-summary-${productId}`;
-    
+
     if (useCache) {
       const cached = this.cache.get<ProductSummary>(cacheKey);
       if (cached) {
@@ -150,10 +150,10 @@ class ProductApiService {
     try {
       const response: AxiosResponse<ProductSummary> = await this.axiosInstance.get(`/products/${productId}/summary`);
       const summary = response.data;
-      
+
       this.cache.set(cacheKey, summary);
       console.log(`Fetched product summary for ${productId} from API`);
-      
+
       return summary;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -169,7 +169,7 @@ class ProductApiService {
    */
   async getProductsByCategory(category: string, useCache: boolean = true): Promise<ProductDetail[]> {
     const cacheKey = `products-category-${category}`;
-    
+
     if (useCache) {
       const cached = this.cache.get<ProductDetail[]>(cacheKey);
       if (cached) {
@@ -181,14 +181,28 @@ class ProductApiService {
     try {
       const response: AxiosResponse<ProductDetail[]> = await this.axiosInstance.get(`/products/category/${category}`);
       const products = response.data;
-      
+
       this.cache.set(cacheKey, products);
       console.log(`Fetched ${products.length} products for category ${category} from API`);
-      
+
       return products;
     } catch (error) {
       console.error(`Error fetching products for category ${category}:`, error);
       throw new Error(`${category} 카테고리 제품을 불러오는데 실패했습니다.`);
+    }
+  }
+
+  /**
+   * 키워드로 리뷰 검색
+   */
+  async searchReviewsByKeyword(keyword: string): Promise<any> {
+    try {
+      const response = await this.axiosInstance.get(`/keywords/${encodeURIComponent(keyword)}/reviews`);
+      console.log(`Searched reviews for keyword: ${keyword}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error searching reviews for keyword ${keyword}:`, error);
+      throw new Error(`"${keyword}" 키워드 검색에 실패했습니다.`);
     }
   }
 

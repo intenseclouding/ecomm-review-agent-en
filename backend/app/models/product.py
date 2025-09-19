@@ -2,6 +2,14 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 from datetime import datetime
 
+class MediaFile(BaseModel):
+    id: str
+    type: str  # 'image' or 'video'
+    url: str
+    filename: str
+    size: int
+    thumbnail_url: Optional[str] = None
+
 class SellerResponse(BaseModel):
     content: str
     date: str
@@ -22,11 +30,20 @@ class Review(BaseModel):
     analysis_completed: bool = False
     analysis_timestamp: Optional[str] = None
     
+    # 검수 관련 필드
+    moderation_status: Optional[str] = "PENDING"  # "PASS", "FAIL", "PENDING"
+    moderation_results: Optional[str] = None  # JSON 문자열
+    moderation_timestamp: Optional[str] = None
+    is_approved: bool = False  # 검수 통과 여부
+    
     # 셀러 응답
     seller_response: Optional[SellerResponse] = None
     
     # Agent 로그 연결
     agent_log_id: Optional[str] = None
+    
+    # 미디어 파일
+    media_files: Optional[List[MediaFile]] = None
 
 class Product(BaseModel):
     id: str
@@ -45,7 +62,7 @@ class Product(BaseModel):
     rating_distribution: Dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
 
 class ReviewCreate(BaseModel):
-    user_name: str
+    user_name: Optional[str] = None
     rating: int
     content: str
     verified_purchase: bool = True

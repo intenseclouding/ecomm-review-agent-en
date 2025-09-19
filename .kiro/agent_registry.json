@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "agents": {
+    "keyword_extractor": {
+      "name": "keyword_extractor",
+      "version": "1.0.0",
+      "description": "한국어 리뷰에서 키워드를 추출하고 키워드 기반 검색을 제공하는 에이전트",
+      "module_path": "agents.keyword_extractor.agent",
+      "class_name": "KeywordExtractorAgent",
+      "strands_agent": "keyword_extractor_agent",
+      "tools": [
+        "extract_keywords",
+        "upsert_review",
+        "search_reviews_by_keyword"
+      ],
+      "status": "active",
+      "registered_at": "2025-09-18T18:08:09.218285"
+    }
+  },
+  "created_at": "2025-09-18T18:08:09.218277",
+  "updated_at": "2025-09-18T18:08:09.218287"
+}

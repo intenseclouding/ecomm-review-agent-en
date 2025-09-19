@@ -126,14 +126,14 @@ if 'comments' not in st.session_state:
     earphone_img_base64 = ""
 
     try:
-        flower_img = Image.open("images/flower.webp")
+        flower_img = Image.open("../images/flower.webp")
         flower_img.thumbnail((800, 600), Image.Resampling.LANCZOS)
         flower_img_base64 = image_to_base64(flower_img)
     except:
         pass
 
     try:
-        earphone_img = Image.open("images/earphone.png")
+        earphone_img = Image.open("../images/earphone.png")
         earphone_img.thumbnail((800, 600), Image.Resampling.LANCZOS)
         earphone_img_base64 = image_to_base64(earphone_img)
     except:

@@ -89,102 +89,48 @@ def moderate_review(
     """
     
     try:
-        result = review_moderation_agent(moderation_prompt)
+        # Agent 대신 직접 수동 검수 수행
+        from .tools import check_profanity, check_rating_consistency, check_image_product_match
         
-        # Agent 응답에서 JSON 추출
-        response_text = str(result)
+        # 욕설 검사
+        profanity_result = check_profanity(review_content)
         
-        # JSON 파싱 시도 - 여러 방법으로 시도
-        try:
-            moderation_result = None
-            
-            # 방법 1: ```json 블록에서 추출
-            if "```json" in response_text:
-                json_start = response_text.find("```json") + 7
-                json_end = response_text.find("```", json_start)
-                if json_end > json_start:
-                    json_text = response_text[json_start:json_end].strip()
-                    moderation_result = json.loads(json_text)
-            
-            # 방법 2: 마지막 JSON 객체 추출
-            if not moderation_result and "{" in response_text and "}" in response_text:
-                # 가장 마지막 완전한 JSON 객체 찾기
-                json_start = response_text.rfind("{")
-                json_end = response_text.rfind("}") + 1
-                if json_end > json_start:
-                    json_text = response_text[json_start:json_end]
-                    try:
-                        moderation_result = json.loads(json_text)
-                    except json.JSONDecodeError:
-                        # 첫 번째 JSON 객체 시도
-                        json_start = response_text.find("{")
-                        json_end = response_text.find("}") + 1
-                        if json_end > json_start:
-                            json_text = response_text[json_start:json_end]
-                            moderation_result = json.loads(json_text)
-            
-            if not moderation_result:
-                raise ValueError("JSON 형태를 찾을 수 없습니다.")
-            
-        except (json.JSONDecodeError, ValueError) as e:
-            # JSON 파싱 실패 시 수동으로 검수 수행
-            print(f"Agent JSON 파싱 실패, 수동 검수 수행: {e}")
-            
-            # 수동 검수 수행
-            from .tools import check_profanity, check_rating_consistency, check_image_product_match
-            
-            try:
-                # 욕설 검사
-                profanity_result = check_profanity(review_content)
-                
-                # 별점 일치성 검사
-                consistency_result = check_rating_consistency(rating, review_content)
-                
-                # 이미지 검사 (있는 경우에만)
-                if media_files and len(media_files) > 0:
-                    image_result = check_image_product_match(media_files, product_data)
-                    checks_performed = ["profanity_check", "image_match", "rating_consistency"]
-                else:
-                    image_result = {"status": "SKIP", "reason": "업로드된 이미지가 없습니다.", "confidence": 1.0}
-                    checks_performed = ["profanity_check", "rating_consistency"]
-                
-                # 실패한 검수 항목 수집
-                failed_checks = []
-                if profanity_result["status"] == "FAIL":
-                    failed_checks.append("profanity_check")
-                if consistency_result["status"] == "FAIL":
-                    failed_checks.append("rating_consistency")
-                if image_result["status"] == "FAIL":
-                    failed_checks.append("image_match")
-                
-                overall_status = "FAIL" if failed_checks else "PASS"
-                
-                moderation_result = {
-                    "profanity_check": profanity_result,
-                    "image_match": image_result,
-                    "rating_consistency": consistency_result,
-                    "overall_status": overall_status,
-                    "failed_checks": failed_checks,
-                    "checks_performed": checks_performed,
-                    "summary": f"수동 검수 완료 - {overall_status}"
-                }
-                
-            except Exception as manual_error:
-                # 수동 검수도 실패한 경우
-                moderation_result = {
-                    "profanity_check": {"status": "FAIL", "reason": "검수 시스템 오류", "confidence": 0.0},
-                    "image_match": {"status": "SKIP", "reason": "검수 시스템 오류", "confidence": 0.0},
-                    "rating_consistency": {"status": "FAIL", "reason": "검수 시스템 오류", "confidence": 0.0},
-                    "overall_status": "FAIL",
-                    "failed_checks": ["system_error"],
-                    "checks_performed": [],
-                    "summary": f"검수 시스템 오류: {str(manual_error)}"
-                }
+        # 별점 일치성 검사
+        consistency_result = check_rating_consistency(rating, review_content)
+        
+        # 이미지 검사 (있는 경우에만)
+        if media_files and len(media_files) > 0:
+            image_result = check_image_product_match(media_files, product_data)
+            checks_performed = ["profanity_check", "image_match", "rating_consistency"]
+        else:
+            image_result = {"status": "SKIP", "reason": "업로드된 이미지가 없습니다.", "confidence": 1.0}
+            checks_performed = ["profanity_check", "rating_consistency"]
+        
+        # 실패한 검수 항목 수집
+        failed_checks = []
+        if profanity_result["status"] == "FAIL":
+            failed_checks.append("profanity_check")
+        if consistency_result["status"] == "FAIL":
+            failed_checks.append("rating_consistency")
+        if image_result["status"] == "FAIL":
+            failed_checks.append("image_match")
+        
+        overall_status = "FAIL" if failed_checks else "PASS"
+        
+        moderation_result = {
+            "profanity_check": profanity_result,
+            "image_match": image_result,
+            "rating_consistency": consistency_result,
+            "overall_status": overall_status,
+            "failed_checks": failed_checks,
+            "checks_performed": checks_performed,
+            "summary": f"직접 검수 완료 - {overall_status}"
+        }
         
         return {
             "success": True,
             "moderation_result": moderation_result,
-            "raw_response": response_text
+            "raw_response": "직접 검수 수행"
         }
         
     except Exception as e:

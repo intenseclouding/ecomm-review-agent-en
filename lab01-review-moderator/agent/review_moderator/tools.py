@@ -18,7 +18,7 @@ def check_profanity(content: str) -> Dict[str, Any]:
         import boto3
         import json
         
-        # Bedrock 클라이언트 초기화 (Claude 4.0 -> 3.5 사용)
+        # Bedrock 클라이언트 초기화 (Claude 3.5 사용)
         bedrock = boto3.client('bedrock-runtime', region_name='us-west-2')
         
         # Claude에게 보낼 프롬프트
@@ -46,7 +46,7 @@ def check_profanity(content: str) -> Dict[str, Any]:
 }}
 """
         
-        # Bedrock API 호출 (Claude Sonnet 4->3.5)
+        # Bedrock API 호출 (Claude 3.5 Sonnet)
         response = bedrock.invoke_model(
             modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
             body=json.dumps({
@@ -185,32 +185,41 @@ def check_image_product_match(media_files: List[Dict], product_data: Dict) -> Di
         # 첫 번째 이미지만 검사 (여러 이미지가 있을 경우)
         first_media = media_files[0]
         
-        # 이미지 파일 경로 구성
-        # URL에서 실제 파일 경로 추출
+        # 이미지 데이터 추출
         image_url = first_media.get("url", "")
-        if image_url.startswith("/uploads/media/"):
-            # agents/review_moderator/tools.py -> backend/uploads/media/
+        
+        if image_url.startswith("data:image/"):
+            # Streamlit에서 전달된 base64 데이터 처리
+            try:
+                # data:image/jpeg;base64,{base64_data} 형식에서 base64 부분만 추출
+                image_data = image_url.split(",")[1]
+            except IndexError:
+                return {
+                    "status": "FAIL",
+                    "reason": "잘못된 base64 이미지 데이터 형식입니다.",
+                    "confidence": 0.0
+                }
+        elif image_url.startswith("/uploads/media/"):
+            # 파일 시스템 경로 처리 (기존 로직 유지)
             current_file = Path(__file__).resolve()
             project_root = current_file.parent.parent.parent
             image_path = project_root / "backend" / "uploads" / "media" / image_url.split("/")[-1]
+            
+            if not image_path.exists():
+                return {
+                    "status": "FAIL",
+                    "reason": f"이미지 파일이 존재하지 않습니다: {image_path}",
+                    "confidence": 0.0
+                }
+            
+            with open(image_path, "rb") as image_file:
+                image_data = base64.b64encode(image_file.read()).decode('utf-8')
         else:
             return {
                 "status": "FAIL",
                 "reason": f"지원하지 않는 이미지 URL 형식입니다: {image_url}",
                 "confidence": 0.0
             }
-        
-        # 이미지 파일이 존재하는지 확인
-        if not image_path.exists():
-            return {
-                "status": "FAIL",
-                "reason": f"이미지 파일이 존재하지 않습니다: {image_path}",
-                "confidence": 0.0
-            }
-        
-        # 이미지를 base64로 인코딩
-        with open(image_path, "rb") as image_file:
-            image_data = base64.b64encode(image_file.read()).decode('utf-8')
         
         # Claude Vision API 호출
         prompt = f"""
@@ -233,9 +242,9 @@ def check_image_product_match(media_files: List[Dict], product_data: Dict) -> Di
 }}
 """
         
-        # Bedrock API 호출
+        # Bedrock API 호출 (Claude 3.5 Sonnet v2)
         response = bedrock.invoke_model(
-            modelId="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
             body=json.dumps({
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": 1000,
@@ -398,9 +407,9 @@ def check_rating_consistency(rating: int, content: str) -> Dict[str, Any]:
 }}
 """
         
-        # Bedrock API 호출 (이미지 검수와 동일한 모델)
+        # Bedrock API 호출 (Claude 3.5 Sonnet)
         response = bedrock.invoke_model(
-            modelId="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
             body=json.dumps({
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": 1000,

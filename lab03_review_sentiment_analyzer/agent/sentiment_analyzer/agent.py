@@ -1,4 +1,4 @@
-from strands import Agent
+from strands import Agent, tool
 import json
 from typing import Dict, Any
 
@@ -78,6 +78,7 @@ def generate_confidence_explanation(sentiment_result: Dict[str, Any]) -> str:
     
     return f"{route_desc}를 통한 {label} 감정 분석 ({confidence_desc}: {score:.3f})"
 
+@tool
 def analyze_review(review_content: str, debug_mode: bool = False) -> Dict[str, Any]:
     """
     리뷰 텍스트의 감정을 분석하는 메인 함수

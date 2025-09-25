@@ -8,17 +8,18 @@ from io import BytesIO
 import sys
 sys.path.append('.')
 
-# 감정 분석 에이전트 import 시도
+# 자동답변 에이전트 import 시도
 try:
-    from agent.sentiment_analyzer.agent import sentiment_analyzer_agent, analyze_review
-    from agent.sentiment_analyzer.tools import llm_sentiment, dict_sentiment
+    import sys
+    sys.path.append('agent/auto-response')
+    from agent import run_response_agent
     AGENT_AVAILABLE = True
 except ImportError as e:
-    print(f"Sentiment Analyzer Agent import 실패: {e}")
+    print(f"Auto Response Agent import 실패: {e}")
     AGENT_AVAILABLE = False
 
 st.set_page_config(
-    page_title="댓글 분석 테스트",
+    page_title="리뷰 자동답변 시스템",
     page_icon="🛍️",
     layout="wide"
 )
@@ -145,50 +146,42 @@ if 'comments' not in st.session_state:
             "id": 1,
             "author": "김민수",
             "rating": 5,
-            "content": "이 제품 정말 좋아요! 음질도 훌륭하고 배터리도 오래 갑니다.",
+            "content": "이 제품 정말 좋아요! 음질도 훌륭하고 배터리도 오래 갑니다. 가격대비 성능이 훌륭하네요.",
             "timestamp": "2024-01-15 14:30",
             "images": []
         },
         {
             "id": 2,
             "author": "이영희",
-            "rating": 1,
-            "content": "완전 쓰레기네요. 돈 아까워요.",
+            "rating": 2,
+            "content": "배송이 너무 늦어요. 언제 받을 수 있나요? 주문한 지 일주일이 넘었는데 아직도 배송 준비 중이라고 나오네요.",
             "timestamp": "2024-01-14 10:20",
             "images": []
         },
         {
             "id": 3,
             "author": "박철수",
-            "rating": 5,
-            "content": "별로예요. 기대했는데 실망이에요.",
+            "rating": 1,
+            "content": "제품에 하자가 있어서 환불하고 싶은데 어떻게 해야 하나요? 고객센터 연락도 안 되고 답답합니다.",
             "timestamp": "2024-01-13 16:45",
             "images": []
         },
         {
             "id": 4,
-            "author": "최지훈",
+            "author": "최지은",
             "rating": 4,
-            "content": "이어폰 디자인이 깔끔하고 착용감도 편해요. 음질은 가격대비 괜찮은 것 같아요. 아침에 운동할 때 써봤는데 떨어지지도 않고 좋네요!",
-            "timestamp": "2024-01-12 09:15",
-            "images": [earphone_img_base64] if earphone_img_base64 else []
-        },
-        {
-            "id": 5,
-            "author": "정수연",
-            "rating": 3,
-            "content": "이어폰 만만세",
-            "timestamp": "2024-01-11 16:22",
-            "images": [flower_img_base64] if flower_img_base64 else []
+            "content": "전체적으로 만족하는데 색상이 사진과 조금 달라요. 그래도 품질은 좋습니다!",
+            "timestamp": "2024-01-12 11:15",
+            "images": []
         }
     ]
 
-# 감정 분석 결과 저장용 session state
-if 'sentiment_analysis_results' not in st.session_state:
-    st.session_state.sentiment_analysis_results = {}
+# 자동답변 결과 저장용 session state
+if 'auto_responses' not in st.session_state:
+    st.session_state.auto_responses = {}
 
 # 메인 콘텐츠 영역
-st.title("🛍️ 상품 댓글 분석")
+st.title("🛍️ 리뷰 자동답변 시스템")
 
 total_reviews = len(st.session_state.comments)
 total_rating = sum([comment['rating'] for comment in st.session_state.comments])
@@ -225,7 +218,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.subheader("💬 댓글 목록")
+st.subheader("💬 리뷰 목록")
 
 for comment in reversed(st.session_state.comments):
     with st.container():
@@ -262,129 +255,115 @@ for comment in reversed(st.session_state.comments):
             st.caption(comment['timestamp'])
 
         with col4:
-            if st.button("😍 감정분석", key=f"review_{comment['id']}", type="primary", use_container_width=True):
+            if st.button("💬 자동답변", key=f"review_{comment['id']}", type="primary", use_container_width=True):
                 if AGENT_AVAILABLE:
-                    with st.spinner("감정 분석 중..."):
+                    with st.spinner("자동답변 생성 중..."):
                         try:
-                            # 감정 분석 실행
-                            sentiment_result = analyze_review(comment['content'], debug_mode=True)
+                            # 자동답변 생성 실행
+                            agent_result = run_response_agent(comment['content'])
 
-                            if sentiment_result['success']:
-                                sentiment_data = sentiment_result['sentiment_result']
-
-                                # 감정 분석 결과를 comment별로 저장
-                                st.session_state.sentiment_analysis_results[comment['id']] = {
-                                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                    "label": sentiment_data['label'],
-                                    "score": sentiment_data['score'],
-                                    "rationale": sentiment_data['rationale'],
-                                    "route": sentiment_data['route'],
-                                    "confidence_explanation": sentiment_data.get('confidence_explanation', ''),
-                                    "review_text": comment['content'],
-                                    "raw_response": sentiment_result.get('raw_response', '')
-                                }
-                            else:
-                                # 실패한 경우도 결과 저장 (폴백 결과)
-                                sentiment_data = sentiment_result['sentiment_result']
-                                st.session_state.sentiment_analysis_results[comment['id']] = {
-                                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                    "label": sentiment_data['label'],
-                                    "score": sentiment_data['score'],
-                                    "rationale": sentiment_data['rationale'],
-                                    "route": sentiment_data['route'],
-                                    "confidence_explanation": sentiment_data.get('confidence_explanation', ''),
-                                    "review_text": comment['content'],
-                                    "raw_response": sentiment_result.get('raw_response', ''),
-                                    "error": sentiment_result.get('error', '')
-                                }
+                            # 자동답변 결과를 comment별로 저장
+                            st.session_state.auto_responses[comment['id']] = {
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "response": agent_result["response"],
+                                "tool_result": agent_result["tool_results"],
+                                "review_text": comment['content'],
+                                "success": True
+                            }
 
                         except Exception as e:
                             import traceback
                             error_details = traceback.format_exc()
-                            print(f"=== 감정 분석 에러 디버깅 ===")
+                            print(f"=== 자동답변 생성 에러 디버깅 ===")
                             print(f"에러 메시지: {str(e)}")
                             print(f"상세 스택 트레이스:")
                             print(error_details)
                             print(f"===================")
 
-                            st.error(f"감정 분석 중 오류가 발생했습니다: {str(e)}")
+                            st.error(f"자동답변 생성 중 오류가 발생했습니다: {str(e)}")
                             with st.expander("상세 에러 정보"):
                                 st.code(error_details)
+
+                            # 에러 정보도 저장
+                            st.session_state.auto_responses[comment['id']] = {
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "response": f"답변 생성 중 오류가 발생했습니다: {str(e)}",
+                                "tool_result": [],
+                                "review_text": comment['content'],
+                                "success": False,
+                                "error": str(e)
+                            }
                 else:
-                    st.warning("감정 분석 에이전트를 사용할 수 없습니다.")
+                    st.warning("자동답변 에이전트를 사용할 수 없습니다.")
 
-        # 감정 분석 결과가 있으면 펼치기/접기 메뉴 표시
-        if comment['id'] in st.session_state.sentiment_analysis_results:
-            sentiment_result = st.session_state.sentiment_analysis_results[comment['id']]
-            label = sentiment_result.get('label', '중립')
-            score = sentiment_result.get('score', 0.5)
-            route = sentiment_result.get('route', 'unknown')
+        # 자동답변 결과가 있으면 펼치기/접기 메뉴 표시
+        if comment['id'] in st.session_state.auto_responses:
+            auto_response = st.session_state.auto_responses[comment['id']]
+            success = auto_response.get('success', True)
 
-            # 감정에 따른 아이콘 선택
-            if label == '긍정':
-                status_icon = "😊"
+            # 성공/실패에 따른 아이콘 선택
+            if success:
+                status_icon = "✅"
                 status_color = "#22c55e"
-            elif label == '부정':
-                status_icon = "😞"
-                status_color = "#ef4444"
+                status_text = "자동답변 생성 완료"
             else:
-                status_icon = "😐"
-                status_color = "#6b7280"
+                status_icon = "❌"
+                status_color = "#ef4444"
+                status_text = "자동답변 생성 실패"
 
-            with st.expander(f"{status_icon} 감정분석 결과 - {label} ({score:.3f})", expanded=False):
-                # 분석 시간
-                st.write(f"**분석 시간:** {sentiment_result['timestamp']}")
+            with st.expander(f"{status_icon} {status_text}", expanded=True):
+                # 답변 생성 시간
+                st.write(f"**생성 시간:** {auto_response['timestamp']}")
 
-                # 감정 분석 결과
-                col1, col2 = st.columns([1, 2])
-                with col1:
-                    st.markdown(f"<div style='text-align: center; padding: 20px; background-color: {status_color}15; border-radius: 10px; border: 2px solid {status_color}40;'>"
-                               f"<div style='font-size: 48px;'>{status_icon}</div>"
-                               f"<div style='font-size: 24px; font-weight: bold; color: {status_color}; margin-top: 10px;'>{label}</div>"
-                               f"<div style='font-size: 16px; color: {status_color}; margin-top: 5px;'>점수: {score:.3f}</div>"
-                               f"</div>", unsafe_allow_html=True)
+                # 자동답변 내용
+                st.write("**🏬 셀러 답변:**")
+                response_content = auto_response.get('response', '답변을 생성할 수 없습니다.')
+                # 답변을 예쁘게 표시
+                st.markdown(
+                    f"""
+                    <div style='background-color: #f8fafc; padding: 20px; border-radius: 10px; border-left: 4px solid #3b82f6; margin: 10px 0;'>
+                        <div style='color: #1e40af; font-weight: 500; margin-bottom: 8px;'>셀러 답변:</div>
+                        <div style='color: #374151; line-height: 1.6;'>{response_content}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-                with col2:
-                    st.write("**분석 근거:**")
-                    st.write(sentiment_result.get('rationale', '근거 없음'))
+                # Tool 호출 결과 표시
+                tool_results = auto_response.get('tool_result', [])
+                if tool_results:
+                    with st.expander(f"🔧 도구 사용 결과 ({len(tool_results)}개)", expanded=False):
+                        import json
+                        for idx, tool_info in enumerate(tool_results):
+                            st.write(f"**도구 {idx+1} 결과:**")
+                            # JSON 형태로 예쁘게 표시
+                            st.json(tool_info)
 
-                    st.write("**분석 경로:**")
-                    route_descriptions = {
-                        "llm": "Claude 3.7 LLM 분석",
-                        "llm→dict": "LLM 분석 후 사전 기반 재분석",
-                        "dict_fallback": "사전 기반 폴백 분석"
-                    }
-                    st.write(route_descriptions.get(route, route))
-
-                    st.write("**신뢰도 설명:**")
-                    st.write(sentiment_result.get('confidence_explanation', '설명 없음'))
+                            if idx < len(tool_results) - 1:
+                                st.divider()
+                else:
+                    st.info("🔧 이 답변에는 도구 사용 정보가 없습니다.")
 
                 # 오류 정보 (있는 경우)
-                if 'error' in sentiment_result and sentiment_result['error']:
-                    st.error(f"분석 중 오류: {sentiment_result['error']}")
+                if not success and 'error' in auto_response:
+                    st.error(f"생성 중 오류: {auto_response['error']}")
 
                 # 원본 리뷰 텍스트
                 with st.expander("원본 리뷰 텍스트", expanded=False):
-                    st.code(sentiment_result.get('review_text', '텍스트 없음'), language='text')
-
-                # 에이전트 디버깅 정보
-                if 'raw_response' in sentiment_result and sentiment_result['raw_response']:
-                    with st.expander("에이전트 디버깅 정보", expanded=False):
-                        st.write("**에이전트 원본 응답:**")
-                        st.code(sentiment_result.get('raw_response', '응답 없음'), language='text')
+                    st.code(auto_response.get('review_text', '텍스트 없음'), language='text')
 
         st.markdown("---")
 
 st.markdown("---")
 
-st.subheader("✍️ 새 댓글 작성")
+st.subheader("✍️ 새 리뷰 작성")
 
 with st.form("comment_form"):
     col1, col2 = st.columns([3, 1])
 
     with col1:
         author_name = st.text_input("작성자명", placeholder="이름을 입력하세요")
-        comment_content = st.text_area("댓글 내용", placeholder="상품에 대한 의견을 남겨주세요", height=100)
+        comment_content = st.text_area("리뷰 내용", placeholder="상품에 대한 의견을 남겨주세요", height=100)
 
         uploaded_images = st.file_uploader(
             "이미지 첨부 (선택사항)",
@@ -396,7 +375,7 @@ with st.form("comment_form"):
     with col2:
         rating = st.selectbox("평점", [5, 4, 3, 2, 1], format_func=lambda x: f"⭐ {x}점")
 
-    submitted = st.form_submit_button("댓글 등록", type="primary")
+    submitted = st.form_submit_button("리뷰 등록", type="primary")
 
     if submitted:
         if author_name and comment_content:
@@ -429,34 +408,42 @@ with st.form("comment_form"):
                 "images": images_base64
             }
             st.session_state.comments.append(new_comment)
-            st.success("댓글이 등록되었습니다!")
+            st.success("리뷰가 등록되었습니다!")
 
-            # 자동 감정 분석 수행 (AGENT_AVAILABLE인 경우)
+            # 자동 답변 생성 수행 (AGENT_AVAILABLE인 경우)
             if AGENT_AVAILABLE:
-                with st.spinner("새 댓글 자동 감정 분석 중..."):
+                with st.spinner("새 리뷰 자동답변 생성 중..."):
                     try:
-                        # 감정 분석 실행
-                        sentiment_result = analyze_review(comment_content, debug_mode=False)
+                        # 자동답변 생성 실행
+                        agent_result = run_response_agent(comment_content)
 
-                        if sentiment_result['success']:
-                            sentiment_data = sentiment_result['sentiment_result']
+                        # agent_result는 이미 response와 tool_result가 포함된 문자열이므로
+                        # JSON으로 파싱하거나 직접 사용
+                        import json
+                        try:
+                            # JSON 파싱 시도
+                            parsed_result = json.loads(str(agent_result))
+                            response_text = parsed_result.get("response", str(agent_result))
+                            tool_results = parsed_result.get("tool_results", [])
+                        except:
+                            # JSON 파싱 실패시 전체를 response로 사용
+                            response_text = str(agent_result)
+                            tool_results = []
 
-                            # 감정 분석 결과를 comment별로 저장
-                            st.session_state.sentiment_analysis_results[new_comment['id']] = {
-                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "label": sentiment_data['label'],
-                                "score": sentiment_data['score'],
-                                "rationale": sentiment_data['rationale'],
-                                "route": sentiment_data['route'],
-                                "confidence_explanation": sentiment_data.get('confidence_explanation', ''),
-                                "review_text": comment_content
-                            }
+                        # 자동답변 결과를 comment별로 저장
+                        st.session_state.auto_responses[new_comment['id']] = {
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "response": response_text,
+                            "tool_result": tool_results,
+                            "review_text": comment_content,
+                            "success": True
+                        }
 
                     except Exception as e:
-                        st.error(f"자동 감정 분석 중 오류가 발생했습니다: {str(e)}")
+                        st.error(f"자동답변 생성 중 오류가 발생했습니다: {str(e)}")
 
             st.rerun()
         else:
-            st.error("작성자명과 댓글 내용을 모두 입력해주세요.")
+            st.error("작성자명과 리뷰 내용을 모두 입력해주세요.")
 
 st.markdown("---")

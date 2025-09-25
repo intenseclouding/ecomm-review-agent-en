@@ -1,4 +1,4 @@
-from strands import Agent
+from strands import Agent, tool
 from .tools import check_profanity, check_image_product_match, check_rating_consistency
 import json
 import logging
@@ -50,6 +50,7 @@ review_moderation_agent = Agent(
     """
 )
 
+@tool
 def moderate_review(
     review_content: str,
     rating: int,

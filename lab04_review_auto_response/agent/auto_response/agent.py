@@ -1,4 +1,4 @@
-from strands import Agent
+from strands import Agent, tool
 from strands_tools import retrieve, use_llm
 import os
 import logging
@@ -68,6 +68,13 @@ SELLER_ANSWER_PROMPT = """
 단, 공손한 톤이어야 합니다. 
 """
 
+auto_response_agent = Agent(
+    tools=[retrieve, use_llm],
+    system_prompt=RESPONSE_SYSTEM_PROMPT + f"""
+    SELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}
+    """
+)
+
 def filter_tool_result(agent: Agent) -> List:
     """
     Agent의 실행 결과에서 tool_result만을 추출하는 함수
@@ -86,6 +93,7 @@ def filter_tool_result(agent: Agent) -> List:
                 tool_results.append(m["content"][0]["toolResult"])
     return tool_results
 
+@tool
 def run_response_agent(review: str) -> Dict[str, Any]:
     """
     리뷰에 대한 자동 응답을 생성하는 메인 함수

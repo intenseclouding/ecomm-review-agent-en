@@ -8,18 +8,17 @@ from io import BytesIO
 import sys
 sys.path.append('.')
 
-# 감정 분석 에이전트 import 시도
+# 종합 분석 오케스트레이터 import 시도
 try:
-    from agent.sentiment_analyzer.agent import sentiment_analyzer_agent, analyze_review
-    from agent.sentiment_analyzer.tools import llm_sentiment, dict_sentiment
+    from agent.orchestrator.agent import comprehensive_analyzer
     AGENT_AVAILABLE = True
 except ImportError as e:
-    print(f"Sentiment Analyzer Agent import 실패: {e}")
+    print(f"Comprehensive Analyzer Agent import 실패: {e}")
     AGENT_AVAILABLE = False
 
 st.set_page_config(
-    page_title="댓글 분석 테스트",
-    page_icon="🛍️",
+    page_title="종합 리뷰 분석 시스템",
+    page_icon="🔬",
     layout="wide"
 )
 
@@ -99,6 +98,29 @@ st.markdown(
     .keyword-badge::before {
         content: "#";
         margin-right: 2px;
+    }
+    .analysis-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        margin: 12px 0;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .status-approved {
+        border-left: 4px solid #10b981;
+        background: #ecfdf5;
+    }
+    .status-rejected {
+        border-left: 4px solid #ef4444;
+        background: #fef2f2;
+    }
+    .highlight-box {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 8px 0;
+        border-left: 3px solid #6366f1;
     }
     @media (max-width: 1024px) {
         .product-rating-grid {
@@ -183,12 +205,12 @@ if 'comments' not in st.session_state:
         }
     ]
 
-# 감정 분석 결과 저장용 session state
-if 'sentiment_analysis_results' not in st.session_state:
-    st.session_state.sentiment_analysis_results = {}
+# 종합 분석 결과 저장용 session state
+if 'comprehensive_analysis_results' not in st.session_state:
+    st.session_state.comprehensive_analysis_results = {}
 
 # 메인 콘텐츠 영역
-st.title("🛍️ 상품 댓글 분석")
+st.title("🔬 종합 리뷰 분석 시스템")
 
 total_reviews = len(st.session_state.comments)
 total_rating = sum([comment['rating'] for comment in st.session_state.comments])
@@ -225,7 +247,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.subheader("💬 댓글 목록")
+st.subheader("💬 리뷰 목록 및 종합 분석")
 
 for comment in reversed(st.session_state.comments):
     with st.container():
@@ -262,129 +284,158 @@ for comment in reversed(st.session_state.comments):
             st.caption(comment['timestamp'])
 
         with col4:
-            if st.button("😍 감정분석", key=f"review_{comment['id']}", type="primary", use_container_width=True):
+            if st.button("🔬 종합분석", key=f"comprehensive_analysis_{comment['id']}", type="primary", use_container_width=True):
                 if AGENT_AVAILABLE:
-                    with st.spinner("감정 분석 중..."):
+                    with st.spinner("종합 리뷰 분석 중..."):
                         try:
-                            # 감정 분석 실행
-                            sentiment_result = analyze_review(comment['content'], debug_mode=True)
+                            # 리뷰 데이터 준비
+                            review_data = {
+                                "review_id": comment['id'],
+                                "content": comment['content'],
+                                "rating": comment['rating'],
+                                "author": comment['author'],
+                                "timestamp": comment['timestamp'],
+                                "images": comment.get('images', [])
+                            }
 
-                            if sentiment_result['success']:
-                                sentiment_data = sentiment_result['sentiment_result']
+                            # 종합 분석 실행
+                            analysis_result = comprehensive_analyzer(review_data)
 
-                                # 감정 분석 결과를 comment별로 저장
-                                st.session_state.sentiment_analysis_results[comment['id']] = {
-                                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                    "label": sentiment_data['label'],
-                                    "score": sentiment_data['score'],
-                                    "rationale": sentiment_data['rationale'],
-                                    "route": sentiment_data['route'],
-                                    "confidence_explanation": sentiment_data.get('confidence_explanation', ''),
-                                    "review_text": comment['content'],
-                                    "raw_response": sentiment_result.get('raw_response', '')
-                                }
-                            else:
-                                # 실패한 경우도 결과 저장 (폴백 결과)
-                                sentiment_data = sentiment_result['sentiment_result']
-                                st.session_state.sentiment_analysis_results[comment['id']] = {
-                                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                    "label": sentiment_data['label'],
-                                    "score": sentiment_data['score'],
-                                    "rationale": sentiment_data['rationale'],
-                                    "route": sentiment_data['route'],
-                                    "confidence_explanation": sentiment_data.get('confidence_explanation', ''),
-                                    "review_text": comment['content'],
-                                    "raw_response": sentiment_result.get('raw_response', ''),
-                                    "error": sentiment_result.get('error', '')
-                                }
+                            # 결과를 session state에 저장
+                            st.session_state.comprehensive_analysis_results[comment['id']] = {
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "analysis_result": analysis_result,
+                                "review_data": review_data
+                            }
 
                         except Exception as e:
                             import traceback
                             error_details = traceback.format_exc()
-                            print(f"=== 감정 분석 에러 디버깅 ===")
+                            print(f"=== 종합 분석 에러 디버깅 ===")
                             print(f"에러 메시지: {str(e)}")
                             print(f"상세 스택 트레이스:")
                             print(error_details)
                             print(f"===================")
 
-                            st.error(f"감정 분석 중 오류가 발생했습니다: {str(e)}")
+                            st.error(f"종합 분석 중 오류가 발생했습니다: {str(e)}")
                             with st.expander("상세 에러 정보"):
                                 st.code(error_details)
                 else:
-                    st.warning("감정 분석 에이전트를 사용할 수 없습니다.")
+                    st.warning("종합 분석 에이전트를 사용할 수 없습니다.")
 
-        # 감정 분석 결과가 있으면 펼치기/접기 메뉴 표시
-        if comment['id'] in st.session_state.sentiment_analysis_results:
-            sentiment_result = st.session_state.sentiment_analysis_results[comment['id']]
-            label = sentiment_result.get('label', '중립')
-            score = sentiment_result.get('score', 0.5)
-            route = sentiment_result.get('route', 'unknown')
+        # 종합 분석 결과가 있으면 표시
+        if comment['id'] in st.session_state.comprehensive_analysis_results:
+            result_data = st.session_state.comprehensive_analysis_results[comment['id']]
+            analysis = result_data.get('analysis_result', {})
 
-            # 감정에 따른 아이콘 선택
-            if label == '긍정':
-                status_icon = "😊"
-                status_color = "#22c55e"
-            elif label == '부정':
-                status_icon = "😞"
-                status_color = "#ef4444"
+            # ReviewAnalysis 구조에 따른 결과 표시
+            moderation_result = analysis.get('moderation_result', {})
+            is_approved = moderation_result.get('approved', False)
+
+            # 검수 결과에 따른 상태 표시
+            if is_approved:
+                status_class = "status-approved"
+                status_icon = "✅"
+                status_text = "검수 통과"
             else:
-                status_icon = "😐"
-                status_color = "#6b7280"
+                status_class = "status-rejected"
+                status_icon = "❌"
+                status_text = "검수 실패"
 
-            with st.expander(f"{status_icon} 감정분석 결과 - {label} ({score:.3f})", expanded=False):
+            with st.expander(f"{status_icon} 종합 분석 결과 - {status_text}", expanded=True):
                 # 분석 시간
-                st.write(f"**분석 시간:** {sentiment_result['timestamp']}")
+                st.write(f"**분석 시간:** {result_data['timestamp']}")
 
-                # 감정 분석 결과
-                col1, col2 = st.columns([1, 2])
-                with col1:
-                    st.markdown(f"<div style='text-align: center; padding: 20px; background-color: {status_color}15; border-radius: 10px; border: 2px solid {status_color}40;'>"
-                               f"<div style='font-size: 48px;'>{status_icon}</div>"
-                               f"<div style='font-size: 24px; font-weight: bold; color: {status_color}; margin-top: 10px;'>{label}</div>"
-                               f"<div style='font-size: 16px; color: {status_color}; margin-top: 5px;'>점수: {score:.3f}</div>"
-                               f"</div>", unsafe_allow_html=True)
+                # 1. 검수 결과
+                st.markdown("### 1️⃣ 리뷰 검수 결과")
+                with st.container():
+                    st.markdown(f'<div class="analysis-card {status_class}">', unsafe_allow_html=True)
 
-                with col2:
-                    st.write("**분석 근거:**")
-                    st.write(sentiment_result.get('rationale', '근거 없음'))
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        st.markdown(f"**상태:** {status_text}")
+                        if 'confidence' in moderation_result:
+                            st.markdown(f"**신뢰도:** {moderation_result['confidence']:.3f}")
 
-                    st.write("**분석 경로:**")
-                    route_descriptions = {
-                        "llm": "Claude 3.7 LLM 분석",
-                        "llm→dict": "LLM 분석 후 사전 기반 재분석",
-                        "dict_fallback": "사전 기반 폴백 분석"
-                    }
-                    st.write(route_descriptions.get(route, route))
+                    with col2:
+                        st.markdown("**검수 사유:**")
+                        if 'reason' in moderation_result:
+                            st.write(moderation_result['reason'])
+                        else:
+                            st.write("검수 사유 정보 없음")
 
-                    st.write("**신뢰도 설명:**")
-                    st.write(sentiment_result.get('confidence_explanation', '설명 없음'))
+                    st.markdown('</div>', unsafe_allow_html=True)
 
-                # 오류 정보 (있는 경우)
-                if 'error' in sentiment_result and sentiment_result['error']:
-                    st.error(f"분석 중 오류: {sentiment_result['error']}")
+                # 검수 실패 시 이후 단계 생략
+                if not is_approved:
+                    st.warning("⚠️ 리뷰가 검수를 통과하지 못하여 이후 분석 단계가 생략되었습니다.")
+                else:
+                    # 2. 키워드 분석 결과
+                    st.markdown("### 2️⃣ 키워드 분석 결과")
+                    keyword_highlights = analysis.get('keyword_highlighted_list', [])
 
-                # 원본 리뷰 텍스트
-                with st.expander("원본 리뷰 텍스트", expanded=False):
-                    st.code(sentiment_result.get('review_text', '텍스트 없음'), language='text')
+                    if keyword_highlights:
+                        for highlight in keyword_highlights:
+                            keyword = highlight.get('keyword', '')
+                            sentences = highlight.get('sentences', [])
 
-                # 에이전트 디버깅 정보
-                if 'raw_response' in sentiment_result and sentiment_result['raw_response']:
-                    with st.expander("에이전트 디버깅 정보", expanded=False):
-                        st.write("**에이전트 원본 응답:**")
-                        st.code(sentiment_result.get('raw_response', '응답 없음'), language='text')
+                            st.markdown(f'<div class="highlight-box">', unsafe_allow_html=True)
+                            st.markdown(f"**키워드:** `{keyword}`")
+                            st.markdown("**관련 문장들:**")
+                            for sentence in sentences:
+                                st.markdown(f"• {sentence}")
+                            st.markdown('</div>', unsafe_allow_html=True)
+                    else:
+                        st.info("추출된 키워드가 없습니다.")
+
+                    # 3. 감정 분석 결과
+                    st.markdown("### 3️⃣ 감정 분석 결과")
+                    sentiment = analysis.get('sentiment', '정보 없음')
+
+                    # 감정에 따른 색상 및 아이콘
+                    if '긍정' in sentiment:
+                        sentiment_color = "#22c55e"
+                        sentiment_icon = "😊"
+                    elif '부정' in sentiment:
+                        sentiment_color = "#ef4444"
+                        sentiment_icon = "😞"
+                    else:
+                        sentiment_color = "#6b7280"
+                        sentiment_icon = "😐"
+
+                    st.markdown(f'<div class="analysis-card" style="border-left: 4px solid {sentiment_color};">', unsafe_allow_html=True)
+                    st.markdown(f"{sentiment_icon} **감정:** {sentiment}")
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    # 4. 자동 응답 결과
+                    st.markdown("### 4️⃣ 자동 응답")
+                    auto_response = analysis.get('auto_response', '응답 생성 정보 없음')
+
+                    st.markdown('<div class="analysis-card">', unsafe_allow_html=True)
+                    st.markdown("**생성된 셀러 응답:**")
+                    st.markdown(f'<div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 3px solid #3b82f6;">{auto_response}</div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                # 원본 데이터
+                with st.expander("📋 원본 리뷰 데이터", expanded=False):
+                    st.json(result_data.get('review_data', {}))
+
+                # 전체 분석 결과 (디버깅용)
+                with st.expander("🔧 전체 분석 결과 (디버깅)", expanded=False):
+                    st.json(analysis)
 
         st.markdown("---")
 
 st.markdown("---")
 
-st.subheader("✍️ 새 댓글 작성")
+st.subheader("✍️ 새 리뷰 작성")
 
 with st.form("comment_form"):
     col1, col2 = st.columns([3, 1])
 
     with col1:
         author_name = st.text_input("작성자명", placeholder="이름을 입력하세요")
-        comment_content = st.text_area("댓글 내용", placeholder="상품에 대한 의견을 남겨주세요", height=100)
+        comment_content = st.text_area("리뷰 내용", placeholder="상품에 대한 의견을 남겨주세요", height=100)
 
         uploaded_images = st.file_uploader(
             "이미지 첨부 (선택사항)",
@@ -396,7 +447,7 @@ with st.form("comment_form"):
     with col2:
         rating = st.selectbox("평점", [5, 4, 3, 2, 1], format_func=lambda x: f"⭐ {x}점")
 
-    submitted = st.form_submit_button("댓글 등록", type="primary")
+    submitted = st.form_submit_button("리뷰 등록", type="primary")
 
     if submitted:
         if author_name and comment_content:
@@ -429,34 +480,39 @@ with st.form("comment_form"):
                 "images": images_base64
             }
             st.session_state.comments.append(new_comment)
-            st.success("댓글이 등록되었습니다!")
+            st.success("리뷰가 등록되었습니다!")
 
-            # 자동 감정 분석 수행 (AGENT_AVAILABLE인 경우)
+            # 자동 종합 분석 수행 (AGENT_AVAILABLE인 경우)
             if AGENT_AVAILABLE:
-                with st.spinner("새 댓글 자동 감정 분석 중..."):
+                with st.spinner("새 리뷰 자동 종합 분석 중..."):
                     try:
-                        # 감정 분석 실행
-                        sentiment_result = analyze_review(comment_content, debug_mode=False)
+                        # 리뷰 데이터 준비
+                        review_data = {
+                            "review_id": new_comment['id'],
+                            "content": comment_content,
+                            "rating": rating,
+                            "author": author_name,
+                            "timestamp": new_comment['timestamp'],
+                            "images": images_base64
+                        }
 
-                        if sentiment_result['success']:
-                            sentiment_data = sentiment_result['sentiment_result']
+                        # 종합 분석 실행
+                        analysis_result = comprehensive_analyzer(review_data)
 
-                            # 감정 분석 결과를 comment별로 저장
-                            st.session_state.sentiment_analysis_results[new_comment['id']] = {
-                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "label": sentiment_data['label'],
-                                "score": sentiment_data['score'],
-                                "rationale": sentiment_data['rationale'],
-                                "route": sentiment_data['route'],
-                                "confidence_explanation": sentiment_data.get('confidence_explanation', ''),
-                                "review_text": comment_content
-                            }
+                        # 결과를 session state에 저장
+                        st.session_state.comprehensive_analysis_results[new_comment['id']] = {
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "analysis_result": analysis_result,
+                            "review_data": review_data
+                        }
+
+                        st.success("자동 종합 분석이 완료되었습니다!")
 
                     except Exception as e:
-                        st.error(f"자동 감정 분석 중 오류가 발생했습니다: {str(e)}")
+                        st.error(f"자동 종합 분석 중 오류가 발생했습니다: {str(e)}")
 
             st.rerun()
         else:
-            st.error("작성자명과 댓글 내용을 모두 입력해주세요.")
+            st.error("작성자명과 리뷰 내용을 모두 입력해주세요.")
 
 st.markdown("---")

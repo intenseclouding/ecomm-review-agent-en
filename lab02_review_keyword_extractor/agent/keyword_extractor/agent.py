@@ -1,75 +1,99 @@
-"""
-키워드 추출기 에이전트
-
-키워드 추출 및 검색 기능을 위한 Strands Agent.
-"""
-
 from strands import Agent
+import json
 
-# 모듈 및 직접 실행 모두를 위한 가져오기 처리
-try:
-    from .tools import extract_keywords, upsert_review, search_reviews_by_keyword
-except ImportError:
-    from tools import extract_keywords, upsert_review, search_reviews_by_keyword
+from agent.keyword_extractor.tools import get_all_keywords
 
-
-def get_product_terms() -> list:
-    """
-    제품 관련 용어 목록을 반환합니다.
-    
-    Returns:
-        한국어 제품 관련 용어 목록
-    """
-    return [
-        # 의류/패션 관련
-        "핏", "사이즈", "크기", "길이", "소재", "재질", "디자인", "색상", "컬러",
-        
-        # 화장품/뷰티 관련  
-        "발림성", "커버력", "지속력", "보습", "수분", "끈적임", "흡수", "마감",
-        "광택", "매트", "촉촉", "부드러움", "탄력", "밀착", "자연스러움",
-        "선명도", "투명도", "향", "냄새", "텍스처", "질감",
-        
-        # 전자제품 관련
-        "배터리", "화질", "음질", "성능", "속도", "용량", "무게", "두께",
-        "화면", "디스플레이", "버튼", "조작", "연결", "호환성",
-        
-        # 공통 제품 특성
-        "품질", "내구성", "편의성", "실용성", "가성비", "포장", "배송",
-        "브랜드", "가격", "용량", "분량"
-    ]
-
-# 키워드 추출 에이전트 정의
-keyword_extractor_agent = Agent(
+# 키워드 매칭 Agent
+keyword_agent = Agent(
     model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    tools=[extract_keywords, upsert_review, search_reviews_by_keyword],
-    system_prompt=f"""
-    당신은 전문적인 한국어 리뷰 키워드 추출 에이전트입니다.
-    
-    **핵심 원칙: 제품의 구체적 특성만 추출**
-    
-    ✅ 추출해야 할 키워드 (제품 특성):
-    - 물리적 특성: {', '.join(get_product_terms()[:20])}
-    - 기능적 특성: 노이즈캔슬링, 방수, 무선충전 등
-    
-    ❌ 절대 추출하지 말 것:
-    - 감정/평가: 좋다, 나쁘다, 만족, 추천, 예쁘다, 아쉽다
-    - 일반 동사: 사용, 구매, 주문, 배송
-    - 시간/상황: 겨울, 2주, 개인차
-    - 무의미한 텍스트: 랜덤 문자, 테스트, asdf
-    - 브랜드명이나 고유명사
-    
-    **추출 규칙:**
-    1. 최대 3개까지만 (정말 핵심적인 것만)
-    2. 명사형으로 정규화 (예: "착용감이" → "착용감")
-    3. 제품과 직접 관련된 특성만
-    4. 빈 리뷰나 의미없는 텍스트는 빈 배열 반환
-    
-    **예시:**
-    - "음질이 좋고 배터리도 오래가요" → ["음질", "배터리"]
-    - "핏이 예쁘고 색깔도 좋아요" → ["핏", "색상"]
-    - "너무 만족해요 추천합니다" → []
-    - "asdfasdf" → []
-    
-    응답: {{"keywords": ["키워드1", "키워드2"]}}
+    tools=[get_all_keywords],
+    system_prompt="""
+    당신은 키워드 기반 리뷰 분석 전문가입니다.
+
+    ## 핵심 역할:
+    - 리뷰 텍스트에서 한국어 특성과 문맥을 고려해 의미있는 키워드를 정확하게 추출
+    - 등록된 키워드와의 정밀한 매칭
+
+    ## 작업 프로세스:
+    1. **등록된 키워드 조회**: get_all_keywords 도구를 사용하여 등록된 키워드 목록 획득
+    2. **리뷰 텍스트 분석**: 등록된 키워드를 참고하여 리뷰에서 관련 키워드와 구문 식별
+    3. **매칭 수행**:
+       - 완전 일치 우선
+       - 부분 일치 및 유사어 고려
+       - 의미론적 유사어 고려
+
+    ## 응답 형식:
+    {
+        "matched_keywords": [
+            {
+                "keyword": "매칭된 키워드",
+                "match_type": "exact|partial|semantic",
+                "original_phrase": "리뷰에서 발견된 원본 구문"
+            }
+        ]
+    }
+
+    ## 주의사항:
+    - 한국어 특성 (조사, 어미 변화) 고려하여 매칭
+    - 부정문에서 사용된 키워드도 포함하되 구분하여 처리
+    - 중복 키워드는 제거하고 최적의 매칭만 유지
+    - 응답은 반드시 유효한 JSON 형식만 제공하고 다른 설명이나 텍스트는 포함하지 마세요
     """
 )
+
+def search_keywords(review_text: str) -> dict:
+   
+    # Agent 실행
+    agent_response = keyword_agent(f"""
+    리뷰: {review_text}
+
+위 리뷰에서 등록된 키워드와 매칭되는 내용을 찾아주세요.
+
+중요: 응답은 오직 JSON 형식만 제공하고, 다른 설명이나 텍스트는 일체 포함하지 마세요.
+    """)
+
+
+    # Agent 응답 파싱 (문자열 응답에서 JSON 추출)
+    try:
+        if isinstance(agent_response, str):
+            # JSON 응답 파싱
+            if "```json" in agent_response:
+                json_start = agent_response.find("```json") + 7
+                json_end = agent_response.find("```", json_start)
+                json_text = agent_response[json_start:json_end].strip()
+            elif "{" in agent_response and "}" in agent_response:
+                json_start = agent_response.find("{")
+                json_end = agent_response.rfind("}") + 1
+                json_text = agent_response[json_start:json_end]
+            else:
+                raise ValueError("JSON 형태를 찾을 수 없습니다.")
+
+            result = json.loads(json_text)
+        else:
+            # AgentResult 객체 처리
+            agent_response_str = str(agent_response)
+            if "```json" in agent_response_str:
+                json_start = agent_response_str.find("```json") + 7
+                json_end = agent_response_str.find("```", json_start)
+                json_text = agent_response_str[json_start:json_end].strip()
+            elif "{" in agent_response_str and "}" in agent_response_str:
+                json_start = agent_response_str.find("{")
+                json_end = agent_response_str.rfind("}") + 1
+                json_text = agent_response_str[json_start:json_end]
+            else:
+                raise ValueError("AgentResult에서 JSON 형태를 찾을 수 없습니다.")
+
+            result = json.loads(json_text)
+
+        return {
+            "success": True,
+            "analysis_result": result,
+            "raw_response": str(agent_response)
+        }
+
+    except (json.JSONDecodeError, ValueError) as e:
+        return {
+            "success": False,
+            "error": f"Agent 응답 파싱 실패: {str(e)}",
+            "raw_response": str(agent_response)
+        }

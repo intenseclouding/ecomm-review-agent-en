@@ -8,18 +8,17 @@ from io import BytesIO
 import sys
 sys.path.append('.')
 
-# 자동답변 에이전트 import 시도
+# 종합 분석 오케스트레이터 import 시도
 try:
-    import sys
-    from auto_response.agent import generate_auto_reponse
+    from agent.orchestrator.agent import comprehensive_analyzer
     AGENT_AVAILABLE = True
 except ImportError as e:
-    print(f"Auto Response Agent import 실패: {e}")
+    print(f"Comprehensive Analyzer Agent import 실패: {e}")
     AGENT_AVAILABLE = False
 
 st.set_page_config(
-    page_title="리뷰 자동답변 시스템",
-    page_icon="🛍️",
+    page_title="종합 리뷰 분석 시스템",
+    page_icon="🔬",
     layout="wide"
 )
 
@@ -100,6 +99,29 @@ st.markdown(
         content: "#";
         margin-right: 2px;
     }
+    .analysis-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        margin: 12px 0;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .status-approved {
+        border-left: 4px solid #10b981;
+        background: #ecfdf5;
+    }
+    .status-rejected {
+        border-left: 4px solid #ef4444;
+        background: #fef2f2;
+    }
+    .highlight-box {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 8px 0;
+        border-left: 3px solid #6366f1;
+    }
     @media (max-width: 1024px) {
         .product-rating-grid {
             grid-template-columns: 1fr;
@@ -145,42 +167,50 @@ if 'comments' not in st.session_state:
             "id": 1,
             "author": "김민수",
             "rating": 5,
-            "content": "이 제품 정말 좋아요! 음질도 훌륭하고 배터리도 오래 갑니다. 가격대비 성능이 훌륭하네요.",
+            "content": "이 제품 정말 좋아요! 음질도 훌륭하고 배터리도 오래 갑니다.",
             "timestamp": "2024-01-15 14:30",
             "images": []
         },
         {
             "id": 2,
             "author": "이영희",
-            "rating": 2,
-            "content": "배송이 너무 늦어요. 언제 받을 수 있나요? 주문한 지 일주일이 넘었는데 아직도 배송 준비 중이라고 나오네요.",
+            "rating": 1,
+            "content": "완전 쓰레기네요. 돈 아까워요.",
             "timestamp": "2024-01-14 10:20",
             "images": []
         },
         {
             "id": 3,
             "author": "박철수",
-            "rating": 1,
-            "content": "제품에 하자가 있어서 환불하고 싶은데 어떻게 해야 하나요? 고객센터 연락도 안 되고 답답합니다.",
+            "rating": 5,
+            "content": "별로예요. 기대했는데 실망이에요.",
             "timestamp": "2024-01-13 16:45",
             "images": []
         },
         {
             "id": 4,
-            "author": "최지은",
+            "author": "최지훈",
             "rating": 4,
-            "content": "전체적으로 만족하는데 색상이 사진과 조금 달라요. 그래도 품질은 좋습니다!",
-            "timestamp": "2024-01-12 11:15",
-            "images": []
+            "content": "이어폰 디자인이 깔끔하고 착용감도 편해요. 음질은 가격대비 괜찮은 것 같아요. 아침에 운동할 때 써봤는데 떨어지지도 않고 좋네요!",
+            "timestamp": "2024-01-12 09:15",
+            "images": [earphone_img_base64] if earphone_img_base64 else []
+        },
+        {
+            "id": 5,
+            "author": "정수연",
+            "rating": 3,
+            "content": "이어폰 만만세",
+            "timestamp": "2024-01-11 16:22",
+            "images": [flower_img_base64] if flower_img_base64 else []
         }
     ]
 
-# 자동답변 결과 저장용 session state
-if 'auto_responses' not in st.session_state:
-    st.session_state.auto_responses = {}
+# 종합 분석 결과 저장용 session state
+if 'comprehensive_analysis_results' not in st.session_state:
+    st.session_state.comprehensive_analysis_results = {}
 
 # 메인 콘텐츠 영역
-st.title("🛍️ 리뷰 자동답변 시스템")
+st.title("🔬 종합 리뷰 분석 시스템")
 
 total_reviews = len(st.session_state.comments)
 total_rating = sum([comment['rating'] for comment in st.session_state.comments])
@@ -217,7 +247,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.subheader("💬 리뷰 목록")
+st.subheader("💬 리뷰 목록 및 종합 분석")
 
 for comment in reversed(st.session_state.comments):
     with st.container():
@@ -254,102 +284,145 @@ for comment in reversed(st.session_state.comments):
             st.caption(comment['timestamp'])
 
         with col4:
-            if st.button("💬 자동답변", key=f"review_{comment['id']}", type="primary", use_container_width=True):
+            if st.button("🔬 종합분석", key=f"comprehensive_analysis_{comment['id']}", type="primary", use_container_width=True):
                 if AGENT_AVAILABLE:
-                    with st.spinner("자동답변 생성 중..."):
+                    with st.spinner("종합 리뷰 분석 중..."):
                         try:
-                            # 자동답변 생성 실행
-                            agent_result = generate_auto_reponse(comment['content'])
+                            # 리뷰 데이터 준비
+                            review_data = {
+                                "review_id": comment['id'],
+                                "content": comment['content'],
+                                "rating": comment['rating'],
+                                "author": comment['author'],
+                                "timestamp": comment['timestamp'],
+                                "images": comment.get('images', [])
+                            }
 
-                            # 자동답변 결과를 comment별로 저장
-                            st.session_state.auto_responses[comment['id']] = {
+                            # 종합 분석 실행
+                            analysis_result = comprehensive_analyzer(review_data)
+
+                            # 결과를 session state에 저장
+                            st.session_state.comprehensive_analysis_results[comment['id']] = {
                                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "response": agent_result["response"],
-                                "tool_result": agent_result["tool_results"],
-                                "review_text": comment['content'],
-                                "success": True
+                                "analysis_result": analysis_result,
+                                "review_data": review_data
                             }
 
                         except Exception as e:
                             import traceback
                             error_details = traceback.format_exc()
-                            print(f"=== 자동답변 생성 에러 디버깅 ===")
+                            print(f"=== 종합 분석 에러 디버깅 ===")
                             print(f"에러 메시지: {str(e)}")
                             print(f"상세 스택 트레이스:")
                             print(error_details)
                             print(f"===================")
 
-                            st.error(f"자동답변 생성 중 오류가 발생했습니다: {str(e)}")
+                            st.error(f"종합 분석 중 오류가 발생했습니다: {str(e)}")
                             with st.expander("상세 에러 정보"):
                                 st.code(error_details)
-
-                            # 에러 정보도 저장
-                            st.session_state.auto_responses[comment['id']] = {
-                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "response": f"답변 생성 중 오류가 발생했습니다: {str(e)}",
-                                "tool_result": [],
-                                "review_text": comment['content'],
-                                "success": False,
-                                "error": str(e)
-                            }
                 else:
-                    st.warning("자동답변 에이전트를 사용할 수 없습니다.")
+                    st.warning("종합 분석 에이전트를 사용할 수 없습니다.")
 
-        # 자동답변 결과가 있으면 펼치기/접기 메뉴 표시
-        if comment['id'] in st.session_state.auto_responses:
-            auto_response = st.session_state.auto_responses[comment['id']]
-            success = auto_response.get('success', True)
+        # 종합 분석 결과가 있으면 표시
+        if comment['id'] in st.session_state.comprehensive_analysis_results:
+            result_data = st.session_state.comprehensive_analysis_results[comment['id']]
+            analysis = result_data.get('analysis_result', {})
 
-            # 성공/실패에 따른 아이콘 선택
-            if success:
+            # ReviewAnalysis 구조에 따른 결과 표시
+            moderation_result = analysis.get('moderation_result', {})
+            is_approved = moderation_result.get('approved', False)
+
+            # 검수 결과에 따른 상태 표시
+            if is_approved:
+                status_class = "status-approved"
                 status_icon = "✅"
-                status_color = "#22c55e"
-                status_text = "자동답변 생성 완료"
+                status_text = "검수 통과"
             else:
+                status_class = "status-rejected"
                 status_icon = "❌"
-                status_color = "#ef4444"
-                status_text = "자동답변 생성 실패"
+                status_text = "검수 실패"
 
-            with st.expander(f"{status_icon} {status_text}", expanded=True):
-                # 답변 생성 시간
-                st.write(f"**생성 시간:** {auto_response['timestamp']}")
+            with st.expander(f"{status_icon} 종합 분석 결과 - {status_text}", expanded=True):
+                # 분석 시간
+                st.write(f"**분석 시간:** {result_data['timestamp']}")
 
-                # 자동답변 내용
-                st.write("**🏬 셀러 답변:**")
-                response_content = auto_response.get('response', '답변을 생성할 수 없습니다.')
-                # 답변을 예쁘게 표시
-                st.markdown(
-                    f"""
-                    <div style='background-color: #f8fafc; padding: 20px; border-radius: 10px; border-left: 4px solid #3b82f6; margin: 10px 0;'>
-                        <div style='color: #1e40af; font-weight: 500; margin-bottom: 8px;'>셀러 답변:</div>
-                        <div style='color: #374151; line-height: 1.6;'>{response_content}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                # 1. 검수 결과
+                st.markdown("### 1️⃣ 리뷰 검수 결과")
+                with st.container():
+                    st.markdown(f'<div class="analysis-card {status_class}">', unsafe_allow_html=True)
 
-                # Tool 호출 결과 표시
-                tool_results = auto_response.get('tool_result', [])
-                if tool_results:
-                    with st.expander(f"🔧 도구 사용 결과 ({len(tool_results)}개)", expanded=False):
-                        import json
-                        for idx, tool_info in enumerate(tool_results):
-                            st.write(f"**도구 {idx+1} 결과:**")
-                            # JSON 형태로 예쁘게 표시
-                            st.json(tool_info)
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        st.markdown(f"**상태:** {status_text}")
+                        if 'confidence' in moderation_result:
+                            st.markdown(f"**신뢰도:** {moderation_result['confidence']:.3f}")
 
-                            if idx < len(tool_results) - 1:
-                                st.divider()
+                    with col2:
+                        st.markdown("**검수 사유:**")
+                        if 'reason' in moderation_result:
+                            st.write(moderation_result['reason'])
+                        else:
+                            st.write("검수 사유 정보 없음")
+
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                # 검수 실패 시 이후 단계 생략
+                if not is_approved:
+                    st.warning("⚠️ 리뷰가 검수를 통과하지 못하여 이후 분석 단계가 생략되었습니다.")
                 else:
-                    st.info("🔧 이 답변에는 도구 사용 정보가 없습니다.")
+                    # 2. 키워드 분석 결과
+                    st.markdown("### 2️⃣ 키워드 분석 결과")
+                    keyword_highlights = analysis.get('keyword_highlighted_list', [])
 
-                # 오류 정보 (있는 경우)
-                if not success and 'error' in auto_response:
-                    st.error(f"생성 중 오류: {auto_response['error']}")
+                    if keyword_highlights:
+                        for highlight in keyword_highlights:
+                            keyword = highlight.get('keyword', '')
+                            sentences = highlight.get('sentences', [])
 
-                # 원본 리뷰 텍스트
-                with st.expander("원본 리뷰 텍스트", expanded=False):
-                    st.code(auto_response.get('review_text', '텍스트 없음'), language='text')
+                            st.markdown(f'<div class="highlight-box">', unsafe_allow_html=True)
+                            st.markdown(f"**키워드:** `{keyword}`")
+                            st.markdown("**관련 문장들:**")
+                            for sentence in sentences:
+                                st.markdown(f"• {sentence}")
+                            st.markdown('</div>', unsafe_allow_html=True)
+                    else:
+                        st.info("추출된 키워드가 없습니다.")
+
+                    # 3. 감정 분석 결과
+                    st.markdown("### 3️⃣ 감정 분석 결과")
+                    sentiment = analysis.get('sentiment', '정보 없음')
+
+                    # 감정에 따른 색상 및 아이콘
+                    if '긍정' in sentiment:
+                        sentiment_color = "#22c55e"
+                        sentiment_icon = "😊"
+                    elif '부정' in sentiment:
+                        sentiment_color = "#ef4444"
+                        sentiment_icon = "😞"
+                    else:
+                        sentiment_color = "#6b7280"
+                        sentiment_icon = "😐"
+
+                    st.markdown(f'<div class="analysis-card" style="border-left: 4px solid {sentiment_color};">', unsafe_allow_html=True)
+                    st.markdown(f"{sentiment_icon} **감정:** {sentiment}")
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    # 4. 자동 응답 결과
+                    st.markdown("### 4️⃣ 자동 응답")
+                    auto_response = analysis.get('auto_response', '응답 생성 정보 없음')
+
+                    st.markdown('<div class="analysis-card">', unsafe_allow_html=True)
+                    st.markdown("**생성된 셀러 응답:**")
+                    st.markdown(f'<div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 3px solid #3b82f6;">{auto_response}</div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                # 원본 데이터
+                with st.expander("📋 원본 리뷰 데이터", expanded=False):
+                    st.json(result_data.get('review_data', {}))
+
+                # 전체 분석 결과 (디버깅용)
+                with st.expander("🔧 전체 분석 결과 (디버깅)", expanded=False):
+                    st.json(analysis)
 
         st.markdown("---")
 
@@ -409,37 +482,34 @@ with st.form("comment_form"):
             st.session_state.comments.append(new_comment)
             st.success("리뷰가 등록되었습니다!")
 
-            # 자동 답변 생성 수행 (AGENT_AVAILABLE인 경우)
+            # 자동 종합 분석 수행 (AGENT_AVAILABLE인 경우)
             if AGENT_AVAILABLE:
-                with st.spinner("새 리뷰 자동답변 생성 중..."):
+                with st.spinner("새 리뷰 자동 종합 분석 중..."):
                     try:
-                        # 자동답변 생성 실행
-                        agent_result = generate_auto_reponse(comment_content)
-
-                        # agent_result는 이미 response와 tool_result가 포함된 문자열이므로
-                        # JSON으로 파싱하거나 직접 사용
-                        import json
-                        try:
-                            # JSON 파싱 시도
-                            parsed_result = json.loads(str(agent_result))
-                            response_text = parsed_result.get("response", str(agent_result))
-                            tool_results = parsed_result.get("tool_results", [])
-                        except:
-                            # JSON 파싱 실패시 전체를 response로 사용
-                            response_text = str(agent_result)
-                            tool_results = []
-
-                        # 자동답변 결과를 comment별로 저장
-                        st.session_state.auto_responses[new_comment['id']] = {
-                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "response": response_text,
-                            "tool_result": tool_results,
-                            "review_text": comment_content,
-                            "success": True
+                        # 리뷰 데이터 준비
+                        review_data = {
+                            "review_id": new_comment['id'],
+                            "content": comment_content,
+                            "rating": rating,
+                            "author": author_name,
+                            "timestamp": new_comment['timestamp'],
+                            "images": images_base64
                         }
 
+                        # 종합 분석 실행
+                        analysis_result = comprehensive_analyzer(review_data)
+
+                        # 결과를 session state에 저장
+                        st.session_state.comprehensive_analysis_results[new_comment['id']] = {
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "analysis_result": analysis_result,
+                            "review_data": review_data
+                        }
+
+                        st.success("자동 종합 분석이 완료되었습니다!")
+
                     except Exception as e:
-                        st.error(f"자동답변 생성 중 오류가 발생했습니다: {str(e)}")
+                        st.error(f"자동 종합 분석 중 오류가 발생했습니다: {str(e)}")
 
             st.rerun()
         else:

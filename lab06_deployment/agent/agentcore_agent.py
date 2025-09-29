@@ -1,5 +1,5 @@
 from bedrock_agentcore import BedrockAgentCoreApp
-from agent.orchestrator.agent import comprehensive_analyzer
+from orchestrator.agent import comprehensive_analyzer
 
 app = BedrockAgentCoreApp()
 

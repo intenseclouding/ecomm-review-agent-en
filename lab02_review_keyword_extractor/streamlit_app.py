@@ -45,7 +45,7 @@ def register_keyword(keyword: str, synonyms: List[str] = None) -> Dict[str, Any]
 
 # 키워드 검색 에이전트 import 시도
 try:
-    from agent.keyword_extractor.agent import search_keywords
+    from keyword_extractor.agent import extract_keywords
     AGENT_AVAILABLE = True
     print("✅ Keyword Search Agent import 성공")
 except ImportError as e:

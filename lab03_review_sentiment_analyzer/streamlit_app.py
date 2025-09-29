@@ -1,7 +1,5 @@
 import streamlit as st
 from datetime import datetime
-import json
-import os
 from PIL import Image
 import base64
 from io import BytesIO
@@ -10,8 +8,7 @@ sys.path.append('.')
 
 # 감정 분석 에이전트 import 시도
 try:
-    from agent.sentiment_analyzer.agent import sentiment_analyzer_agent, analyze_review
-    from agent.sentiment_analyzer.tools import llm_sentiment, dict_sentiment
+    from agent.sentiment_analyzer.agent import analyze_sentiment
     AGENT_AVAILABLE = True
 except ImportError as e:
     print(f"Sentiment Analyzer Agent import 실패: {e}")
@@ -194,8 +191,68 @@ total_reviews = len(st.session_state.comments)
 total_rating = sum([comment['rating'] for comment in st.session_state.comments])
 average_rating = total_rating / total_reviews if total_reviews else 0
 
-keywords = ["가성비", "배송", "재질", "음질", "디자인", "편의성"]
-keywords_html = "".join(f'<span class="keyword-badge">{kw}</span>' for kw in keywords)
+# 감정 분석 결과 요약 계산
+def calculate_sentiment_summary():
+    if not st.session_state.sentiment_analysis_results:
+        return {"positive": 0, "negative": 0, "neutral": 0, "total": 0, "analyzed": 0}
+
+    summary = {"positive": 0, "negative": 0, "neutral": 0}
+    analyzed_count = 0
+
+    for result in st.session_state.sentiment_analysis_results.values():
+        label = result.get('label', '').lower()
+        if label in ['긍정', 'positive']:
+            summary['positive'] += 1
+        elif label in ['부정', 'negative']:
+            summary['negative'] += 1
+        else:
+            summary['neutral'] += 1
+        analyzed_count += 1
+
+    summary['total'] = total_reviews
+    summary['analyzed'] = analyzed_count
+    return summary
+
+sentiment_summary = calculate_sentiment_summary()
+
+# 감정 분석 요약 HTML 생성
+if sentiment_summary['analyzed'] > 0:
+    # 전체 분석 완료도 표시
+    completion_rate = sentiment_summary['analyzed'] / sentiment_summary['total'] * 100
+    progress_color = "#22c55e" if completion_rate == 100 else "#f59e0b"
+
+    # 감정 분포 계산
+    total_analyzed = sentiment_summary['analyzed']
+    positive_rate = (sentiment_summary['positive'] / total_analyzed * 100) if total_analyzed > 0 else 0
+    negative_rate = (sentiment_summary['negative'] / total_analyzed * 100) if total_analyzed > 0 else 0
+    neutral_rate = (sentiment_summary['neutral'] / total_analyzed * 100) if total_analyzed > 0 else 0
+
+    # 주요 감정 판정
+    if positive_rate > negative_rate and positive_rate > neutral_rate:
+        dominant_sentiment = "😊 대체적으로 긍정적"
+        dominant_color = "#16a34a"
+    elif negative_rate > positive_rate and negative_rate > neutral_rate:
+        dominant_sentiment = "😞 대체적으로 부정적"
+        dominant_color = "#dc2626"
+    else:
+        dominant_sentiment = "😐 감정이 혼재됨"
+        dominant_color = "#4b5563"
+
+    sentiment_html = f"""<div style="margin-bottom: 12px;">
+<div style="font-size: 16px; font-weight: 600; color: {dominant_color}; margin-bottom: 8px;">{dominant_sentiment}</div>
+<div style="font-size: 14px; color: #374151; margin-bottom: 8px;">긍정 {positive_rate:.0f}% • 부정 {negative_rate:.0f}% • 중립 {neutral_rate:.0f}%</div>
+</div>
+<div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
+<span style="padding: 4px 8px; border-radius: 12px; background-color: rgba(34, 197, 94, 0.1); color: #16a34a; font-size: 12px;">😊 {sentiment_summary['positive']}개</span>
+<span style="padding: 4px 8px; border-radius: 12px; background-color: rgba(239, 68, 68, 0.1); color: #dc2626; font-size: 12px;">😞 {sentiment_summary['negative']}개</span>
+<span style="padding: 4px 8px; border-radius: 12px; background-color: rgba(107, 114, 128, 0.1); color: #4b5563; font-size: 12px;">😐 {sentiment_summary['neutral']}개</span>
+</div>
+<div style="font-size: 12px; color: #6b7280;">{sentiment_summary['analyzed']}/{sentiment_summary['total']} 리뷰 분석 완료 ({completion_rate:.0f}%)</div>"""
+else:
+    sentiment_html = """<div style="text-align: center; padding: 12px; color: #6b7280;">
+<div style="font-size: 14px; margin-bottom: 4px;">분석이 없습니다</div>
+<div style="font-size: 12px;">"🔍 전체 리뷰 분석" 또는 개별 "😍 감정분석" 버튼을 사용해보세요</div>
+</div>"""
 
 st.markdown(
     f"""
@@ -215,8 +272,8 @@ st.markdown(
                     <div class="metric-description">총 {total_reviews}개 리뷰</div>
                 </div>
                 <div class="keyword-badges">
-                    <h3>🏷️ 검색 키워드</h3>
-                    {keywords_html}
+                    <h3>📊 감정 분석 요약</h3>
+                    {sentiment_html}
                 </div>
             </div>
         </div>
@@ -226,6 +283,71 @@ st.markdown(
 )
 
 st.subheader("💬 댓글 목록")
+
+# 전체 리뷰 분석 버튼
+col1, col2, col3 = st.columns([1, 1, 2])
+with col1:
+    if st.button("🔍 전체 리뷰 분석", type="primary", use_container_width=True):
+        if AGENT_AVAILABLE:
+            with st.spinner("모든 리뷰 감정 분석 중..."):
+                progress_bar = st.progress(0)
+                total_comments = len(st.session_state.comments)
+
+                for idx, comment in enumerate(st.session_state.comments):
+                    try:
+                        # 이미 분석된 리뷰는 건너뛰기
+                        if comment['id'] in st.session_state.sentiment_analysis_results:
+                            progress_bar.progress((idx + 1) / total_comments)
+                            continue
+
+                        # 감정 분석 실행
+                        sentiment_result = analyze_sentiment(comment['content'])
+
+                        if sentiment_result['success']:
+                            sentiment_data = sentiment_result['sentiment_result']
+
+                            # 감정 분석 결과 저장
+                            st.session_state.sentiment_analysis_results[comment['id']] = {
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "label": sentiment_data.get('sentiment', 'neutral'),
+                                "score": sentiment_data.get('score', 0.5),
+                                "rationale": sentiment_data.get('reason', '분석 근거 없음'),
+                                "confidence": sentiment_data.get('confidence', 0.5),
+                                "review_text": comment['content'],
+                                "raw_response": sentiment_result.get('raw_response', '')
+                            }
+                        else:
+                            # 실패한 경우도 결과 저장
+                            sentiment_data = sentiment_result['sentiment_result']
+                            st.session_state.sentiment_analysis_results[comment['id']] = {
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "label": sentiment_data.get('sentiment', 'neutral'),
+                                "score": sentiment_data.get('score', 0.5),
+                                "rationale": sentiment_data.get('reason', '분석 오류'),
+                                "confidence": sentiment_data.get('confidence', 0.3),
+                                "review_text": comment['content'],
+                                "raw_response": sentiment_result.get('raw_response', ''),
+                                "error": sentiment_result.get('error', '')
+                            }
+
+                        progress_bar.progress((idx + 1) / total_comments)
+
+                    except Exception as e:
+                        st.error(f"리뷰 '{comment['content'][:30]}...' 분석 중 오류: {str(e)}")
+                        progress_bar.progress((idx + 1) / total_comments)
+                        continue
+
+                progress_bar.empty()
+                st.success(f"✅ 총 {total_comments}개 리뷰 분석 완료!")
+                st.rerun()
+        else:
+            st.warning("감정 분석 에이전트를 사용할 수 없습니다.")
+
+with col2:
+    if st.button("🗑️ 분석 결과 초기화", use_container_width=True):
+        st.session_state.sentiment_analysis_results = {}
+        st.success("분석 결과가 초기화되었습니다!")
+        st.rerun()
 
 for comment in reversed(st.session_state.comments):
     with st.container():
@@ -262,12 +384,19 @@ for comment in reversed(st.session_state.comments):
             st.caption(comment['timestamp'])
 
         with col4:
-            if st.button("😍 감정분석", key=f"review_{comment['id']}", type="primary", use_container_width=True):
+            # 이미 분석된 리뷰인지 확인
+            is_analyzed = comment['id'] in st.session_state.sentiment_analysis_results
+            button_text = "✅ 분석완료" if is_analyzed else "😍 감정분석"
+            button_disabled = is_analyzed
+
+            if st.button(button_text, key=f"review_{comment['id']}",
+                        type="secondary" if is_analyzed else "primary",
+                        use_container_width=True, disabled=button_disabled):
                 if AGENT_AVAILABLE:
                     with st.spinner("감정 분석 중..."):
                         try:
                             # 감정 분석 실행
-                            sentiment_result = analyze_review(comment['content'], debug_mode=True)
+                            sentiment_result = analyze_sentiment(comment['content'])
 
                             if sentiment_result['success']:
                                 sentiment_data = sentiment_result['sentiment_result']
@@ -275,41 +404,33 @@ for comment in reversed(st.session_state.comments):
                                 # 감정 분석 결과를 comment별로 저장
                                 st.session_state.sentiment_analysis_results[comment['id']] = {
                                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                    "label": sentiment_data['label'],
-                                    "score": sentiment_data['score'],
-                                    "rationale": sentiment_data['rationale'],
-                                    "route": sentiment_data['route'],
-                                    "confidence_explanation": sentiment_data.get('confidence_explanation', ''),
+                                    "label": sentiment_data.get('sentiment', 'neutral'),
+                                    "score": sentiment_data.get('score', 0.5),
+                                    "rationale": sentiment_data.get('reason', '분석 근거 없음'),
+                                    "confidence": sentiment_data.get('confidence', 0.5),
                                     "review_text": comment['content'],
                                     "raw_response": sentiment_result.get('raw_response', '')
                                 }
+                                st.success("✅ 분석 완료!")
+                                st.rerun()
                             else:
                                 # 실패한 경우도 결과 저장 (폴백 결과)
                                 sentiment_data = sentiment_result['sentiment_result']
                                 st.session_state.sentiment_analysis_results[comment['id']] = {
                                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                    "label": sentiment_data['label'],
-                                    "score": sentiment_data['score'],
-                                    "rationale": sentiment_data['rationale'],
-                                    "route": sentiment_data['route'],
-                                    "confidence_explanation": sentiment_data.get('confidence_explanation', ''),
+                                    "label": sentiment_data.get('sentiment', 'neutral'),
+                                    "score": sentiment_data.get('score', 0.5),
+                                    "rationale": sentiment_data.get('reason', '분석 오류'),
+                                    "confidence": sentiment_data.get('confidence', 0.3),
                                     "review_text": comment['content'],
                                     "raw_response": sentiment_result.get('raw_response', ''),
                                     "error": sentiment_result.get('error', '')
                                 }
+                                st.warning("⚠️ 분석 중 오류가 발생했지만 폴백 결과를 저장했습니다.")
+                                st.rerun()
 
                         except Exception as e:
-                            import traceback
-                            error_details = traceback.format_exc()
-                            print(f"=== 감정 분석 에러 디버깅 ===")
-                            print(f"에러 메시지: {str(e)}")
-                            print(f"상세 스택 트레이스:")
-                            print(error_details)
-                            print(f"===================")
-
                             st.error(f"감정 분석 중 오류가 발생했습니다: {str(e)}")
-                            with st.expander("상세 에러 정보"):
-                                st.code(error_details)
                 else:
                     st.warning("감정 분석 에이전트를 사용할 수 없습니다.")
 
@@ -318,13 +439,13 @@ for comment in reversed(st.session_state.comments):
             sentiment_result = st.session_state.sentiment_analysis_results[comment['id']]
             label = sentiment_result.get('label', '중립')
             score = sentiment_result.get('score', 0.5)
-            route = sentiment_result.get('route', 'unknown')
+            confidence = sentiment_result.get('confidence', 0.5)
 
             # 감정에 따른 아이콘 선택
-            if label == '긍정':
+            if label in ['긍정', 'positive']:
                 status_icon = "😊"
                 status_color = "#22c55e"
-            elif label == '부정':
+            elif label in ['부정', 'negative']:
                 status_icon = "😞"
                 status_color = "#ef4444"
             else:
@@ -348,16 +469,8 @@ for comment in reversed(st.session_state.comments):
                     st.write("**분석 근거:**")
                     st.write(sentiment_result.get('rationale', '근거 없음'))
 
-                    st.write("**분석 경로:**")
-                    route_descriptions = {
-                        "llm": "Claude 3.7 LLM 분석",
-                        "llm→dict": "LLM 분석 후 사전 기반 재분석",
-                        "dict_fallback": "사전 기반 폴백 분석"
-                    }
-                    st.write(route_descriptions.get(route, route))
-
-                    st.write("**신뢰도 설명:**")
-                    st.write(sentiment_result.get('confidence_explanation', '설명 없음'))
+                    st.write("**신뢰도:**")
+                    st.write(f"{confidence:.2f} / 1.00")
 
                 # 오류 정보 (있는 경우)
                 if 'error' in sentiment_result and sentiment_result['error']:
@@ -436,7 +549,7 @@ with st.form("comment_form"):
                 with st.spinner("새 댓글 자동 감정 분석 중..."):
                     try:
                         # 감정 분석 실행
-                        sentiment_result = analyze_review(comment_content, debug_mode=False)
+                        sentiment_result = analyze_sentiment(comment_content)
 
                         if sentiment_result['success']:
                             sentiment_data = sentiment_result['sentiment_result']
@@ -444,16 +557,16 @@ with st.form("comment_form"):
                             # 감정 분석 결과를 comment별로 저장
                             st.session_state.sentiment_analysis_results[new_comment['id']] = {
                                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "label": sentiment_data['label'],
-                                "score": sentiment_data['score'],
-                                "rationale": sentiment_data['rationale'],
-                                "route": sentiment_data['route'],
-                                "confidence_explanation": sentiment_data.get('confidence_explanation', ''),
+                                "label": sentiment_data.get('sentiment', 'neutral'),
+                                "score": sentiment_data.get('score', 0.5),
+                                "rationale": sentiment_data.get('reason', '분석 근거 없음'),
+                                "confidence": sentiment_data.get('confidence', 0.5),
                                 "review_text": comment_content
                             }
+                            st.info("✨ 새 댓글이 자동으로 분석되었습니다!")
 
                     except Exception as e:
-                        st.error(f"자동 감정 분석 중 오류가 발생했습니다: {str(e)}")
+                        st.warning(f"자동 감정 분석 중 오류가 발생했습니다: {str(e)}")
 
             st.rerun()
         else:

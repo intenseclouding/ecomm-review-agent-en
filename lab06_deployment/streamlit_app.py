@@ -10,7 +10,7 @@ sys.path.append('.')
 
 # 종합 분석 오케스트레이터 import 시도
 try:
-    from agent.orchestrator.agent import comprehensive_analyzer
+    from invoke_agent import invoke_agentcore_runtime
     AGENT_AVAILABLE = True
 except ImportError as e:
     print(f"Comprehensive Analyzer Agent import 실패: {e}")
@@ -299,7 +299,7 @@ for comment in reversed(st.session_state.comments):
                             }
 
                             # 종합 분석 실행
-                            analysis_result = comprehensive_analyzer(review_data)
+                            analysis_result = invoke_agentcore_runtime(review_data)
 
                             # 결과를 session state에 저장
                             st.session_state.comprehensive_analysis_results[comment['id']] = {
@@ -497,7 +497,7 @@ with st.form("comment_form"):
                         }
 
                         # 종합 분석 실행
-                        analysis_result = comprehensive_analyzer(review_data)
+                        analysis_result = invoke_agentcore_runtime(review_data)
 
                         # 결과를 session state에 저장
                         st.session_state.comprehensive_analysis_results[new_comment['id']] = {

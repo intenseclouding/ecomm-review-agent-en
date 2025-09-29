@@ -10,7 +10,7 @@ sys.path.append('.')
 
 # 종합 분석 오케스트레이터 import 시도
 try:
-    from agent.orchestrator.agent import comprehensive_analyzer
+    from orchestrator.agent import comprehensive_analyzer
     AGENT_AVAILABLE = True
 except ImportError as e:
     print(f"Comprehensive Analyzer Agent import 실패: {e}")

@@ -1,6 +1,6 @@
 from strands import Agent
 import json
-
+from string import Template
 from .tools import get_all_keywords
 
 SYSTEM_PROMPT = """
@@ -43,17 +43,26 @@ INPUT_PROMPT = """
 
 중요: 응답은 오직 JSON 형식만 제공하고, 다른 설명이나 텍스트는 일체 포함하지 마세요.
     """
+KEYWORD_EXTRACTOR_PROMPT_TEMPLATE = Template("""
+아래 리뷰에서 등록된 키워드와 매칭되는 내용을 찾아주세요.
+중요: 응답은 오직 JSON 형식만 제공하고, 다른 설명이나 텍스트는 일체 포함하지 마세요.
+<리뷰>
+    {review_text}
+</리뷰>
+""")
 
-def extract_keywords(review_text: str) -> dict:
-   # 키워드 매칭 Agent
+
+def search_keywords(review_text: str) -> dict:
+    # 키워드 매칭 Agent
     keyword_agent = Agent(
         model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
         tools=[get_all_keywords],
         system_prompt=SYSTEM_PROMPT
     )
-    # Agent 실행
-    agent_response = keyword_agent(INPUT_PROMPT.format(review_text=review_text))
 
+    # Agent 실행
+    prompt = KEYWORD_EXTRACTOR_PROMPT_TEMPLATE.substitute(review_text=review_text)
+    agent_response = keyword_agent(prompt)
 
     # Agent 응답 파싱 (문자열 응답에서 JSON 추출)
     try:

@@ -6,7 +6,12 @@ from PIL import Image
 import base64
 from io import BytesIO
 import sys
-sys.path.append('.')
+from pathlib import Path
+
+# Ensure repository root is on the import path
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
 
 # 종합 분석 오케스트레이터 import 시도
 try:

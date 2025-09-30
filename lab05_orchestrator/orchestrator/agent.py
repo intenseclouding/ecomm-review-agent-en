@@ -1,12 +1,21 @@
-from strands import Agent
-from strands_tools import file_read, file_write, editor
-from typing import Dict, Any, List
-from pydantic import BaseModel, Field
+import logging
+from typing import Any, Dict, List
 
-from sub_agents.auto_responser.agent import generate_auto_reponse
+from pydantic import BaseModel, Field
+from strands import Agent
+from strands_tools import editor, file_read, file_write
 from sub_agents.review_moderator.agent import moderate_review
 from sub_agents.keyword_extractor.agent import extract_keywords
 from sub_agents.sentiment_analyzer.agent import analyze_sentiment
+
+# Configure the root strands logger
+logging.getLogger("strands").setLevel(logging.INFO)
+
+# Add a handler to see the logs
+logging.basicConfig(
+    format="%(levelname)s | %(name)s | %(message)s", 
+    handlers=[logging.StreamHandler()]
+)
 
 ORCHESTRATOR_PROMPT = """
     당신은 리뷰 분석 워크플로우를 관리하는 오케스트레이터입니다.
@@ -63,13 +72,11 @@ def comprehensive_analyzer(review_data: Dict[str, Any]) -> Dict[str, Any]:
         system_prompt=ORCHESTRATOR_PROMPT
     )
 
-
     # 리뷰에 대한 자동 응답 생성
     orchestrator_agent(review_data)
-    agent.structured_output(
+    orchestrator_agent.structured_output(
         ReviewAnalysis,
         "리뷰데이터에 대한 분석 결과를 구조화된 형태로 추출하시오"
     )
-
 
 

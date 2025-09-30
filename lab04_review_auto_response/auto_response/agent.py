@@ -68,13 +68,6 @@ SELLER_ANSWER_PROMPT = """
 단, 공손한 톤이어야 합니다. 
 """
 
-auto_response_agent = Agent(
-    tools=[retrieve, use_llm],
-    system_prompt=RESPONSE_SYSTEM_PROMPT + f"""
-    SELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}
-    """
-)
-
 def filter_tool_result(agent: Agent) -> List:
     """
     Agent의 실행 결과에서 tool_result만을 추출하는 함수
@@ -89,7 +82,6 @@ def filter_tool_result(agent: Agent) -> List:
     for m in agent.messages:
         for content in m["content"]:
             if "toolResult" in content:
-                print(f"Tool Result: {m["content"][0]["toolResult"]}")
                 tool_results.append(m["content"][0]["toolResult"])
     return tool_results
 

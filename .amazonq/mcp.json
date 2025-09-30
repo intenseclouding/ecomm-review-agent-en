@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "notion": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery/notion",
+        "--key",
+        "b0cb2e9d-89e7-40b3-99dc-813ec795ec59"
+      ]
+    }
+  }
+}

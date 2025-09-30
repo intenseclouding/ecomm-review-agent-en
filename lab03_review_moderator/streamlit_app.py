@@ -10,7 +10,7 @@ sys.path.append('.')
 
 # 검수 에이전트 import 시도
 try:
-    from agent.review_moderator.agent import moderate_review
+    from review_moderator.agent import moderate_review
     AGENT_AVAILABLE = True
 except ImportError as e:
     print(f"Agent import 실패: {e}")

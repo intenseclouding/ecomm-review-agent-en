@@ -1,13 +1,9 @@
 from strands import Agent
 import json
 
-from agent.keyword_extractor.tools import get_all_keywords
+from .tools import get_all_keywords
 
-# 키워드 매칭 Agent
-keyword_agent = Agent(
-    model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    tools=[get_all_keywords],
-    system_prompt="""
+SYSTEM_PROMPT = """
     당신은 키워드 기반 리뷰 분석 전문가입니다.
 
     ## 핵심 역할:
@@ -38,19 +34,25 @@ keyword_agent = Agent(
     - 부정문에서 사용된 키워드도 포함하되 구분하여 처리
     - 중복 키워드는 제거하고 최적의 매칭만 유지
     - 응답은 반드시 유효한 JSON 형식만 제공하고 다른 설명이나 텍스트는 포함하지 마세요
-    """
-)
+"""
 
-def search_keywords(review_text: str) -> dict:
-   
-    # Agent 실행
-    agent_response = keyword_agent(f"""
-    리뷰: {review_text}
+INPUT_PROMPT = """
+리뷰: {review_text}
 
 위 리뷰에서 등록된 키워드와 매칭되는 내용을 찾아주세요.
 
 중요: 응답은 오직 JSON 형식만 제공하고, 다른 설명이나 텍스트는 일체 포함하지 마세요.
-    """)
+    """
+
+def extract_keywords(review_text: str) -> dict:
+   # 키워드 매칭 Agent
+    keyword_agent = Agent(
+        model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        tools=[get_all_keywords],
+        system_prompt=SYSTEM_PROMPT
+    )
+    # Agent 실행
+    agent_response = keyword_agent(INPUT_PROMPT.format(review_text=review_text))
 
 
     # Agent 응답 파싱 (문자열 응답에서 JSON 추출)

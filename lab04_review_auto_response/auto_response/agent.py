@@ -94,7 +94,7 @@ def filter_tool_result(agent: Agent) -> List:
     return tool_results
 
 @tool
-def run_response_agent(review: str) -> Dict[str, Any]:
+def generate_auto_reponse(review: str) -> Dict[str, Any]:
     """
     리뷰에 대한 자동 응답을 생성하는 메인 함수
 

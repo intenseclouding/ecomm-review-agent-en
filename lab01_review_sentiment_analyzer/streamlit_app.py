@@ -8,7 +8,7 @@ sys.path.append('.')
 
 # 감정 분석 에이전트 import 시도
 try:
-    from agent.sentiment_analyzer.agent import analyze_sentiment
+    from sentiment_analyzer.agent import analyze_sentiment
     AGENT_AVAILABLE = True
 except ImportError as e:
     print(f"Sentiment Analyzer Agent import 실패: {e}")

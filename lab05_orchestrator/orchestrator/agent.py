@@ -3,12 +3,10 @@ from strands_tools import file_read, file_write, editor
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
 
-from ....lab01_review_moderator.agent.review_moderator.agent import moderate_review
-# TODO agent as tools에 맞는 형식으로! 
-from ....lab02_review_keyword_extractor.agent.keyword_extractor.agent import keyword_extractor_agent
-from ....lab03_review_sentiment_analyzer.agent.sentiment_analyzer.agent import sentiment_analyzer_agent
-from ....lab04_review_auto_response.agent.auto_response.agent import run_response_agent
-
+from sub_agents.auto_responser.agent import generate_auto_reponse
+from sub_agents.review_moderator.agent import moderate_review
+from sub_agents.keyword_extractor.agent import extract_keywords
+from sub_agents.sentiment_analyzer.agent import analyze_sentiment
 
 ORCHESTRATOR_PROMPT = """
     당신은 리뷰 분석 워크플로우를 관리하는 오케스트레이터입니다.
@@ -60,7 +58,7 @@ def comprehensive_analyzer(review_data: Dict[str, Any]) -> Dict[str, Any]:
     # 각 요청마다 새로운 Agent 생성
     orchestrator_agent = Agent(
         model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-        tools=[moderate_review, keyword_extractor_agent, sentiment_analyzer_agent, run_response_agent, file_read, file_write, editor],
+        tools=[moderate_review, extract_keywords, analyze_sentiment, generate_auto_reponse, file_read, file_write, editor],
         callback_handler=None,
         system_prompt=ORCHESTRATOR_PROMPT
     )

@@ -11,8 +11,7 @@ sys.path.append('.')
 # 자동답변 에이전트 import 시도
 try:
     import sys
-    sys.path.append('agent/auto-response')
-    from agent import run_response_agent
+    from auto_response.agent import generate_auto_reponse
     AGENT_AVAILABLE = True
 except ImportError as e:
     print(f"Auto Response Agent import 실패: {e}")
@@ -260,7 +259,7 @@ for comment in reversed(st.session_state.comments):
                     with st.spinner("자동답변 생성 중..."):
                         try:
                             # 자동답변 생성 실행
-                            agent_result = run_response_agent(comment['content'])
+                            agent_result = generate_auto_reponse(comment['content'])
 
                             # 자동답변 결과를 comment별로 저장
                             st.session_state.auto_responses[comment['id']] = {
@@ -415,7 +414,7 @@ with st.form("comment_form"):
                 with st.spinner("새 리뷰 자동답변 생성 중..."):
                     try:
                         # 자동답변 생성 실행
-                        agent_result = run_response_agent(comment_content)
+                        agent_result = generate_auto_reponse(comment_content)
 
                         # agent_result는 이미 response와 tool_result가 포함된 문자열이므로
                         # JSON으로 파싱하거나 직접 사용

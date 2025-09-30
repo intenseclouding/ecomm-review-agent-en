@@ -1,0 +1,8 @@
+#!/Users/yejinkm/Desktop/workspace/2025-iw-ecomm-review-agent/ecomm-review-agent-simple-claude/lab04-review-auto-response/venv/bin/python3.13
+# -*- coding: utf-8 -*-
+import re
+import sys
+from pip._internal.cli.main import main
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(main())

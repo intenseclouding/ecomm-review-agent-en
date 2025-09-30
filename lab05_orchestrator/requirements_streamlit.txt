@@ -1,5 +1,0 @@
-streamlit>=1.28.0
-pillow>=9.0.0
-strands-agents>=1.7.0
-strands-agents-tools>=1.7.0
-boto3>=1.26.0

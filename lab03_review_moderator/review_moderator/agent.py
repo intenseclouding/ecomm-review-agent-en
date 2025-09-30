@@ -17,14 +17,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# Configure the root strands logger
-logging.getLogger("strands").setLevel(logging.INFO)
-
-# Add a handler to see the logs
-logging.basicConfig(
-    format="%(levelname)s | %(name)s | %(message)s", 
-    handlers=[logging.StreamHandler()]
-)
 
 # 통합 리뷰 검수 Agent 시스템 프롬프트
 UNIFIED_MODERATOR_PROMPT = """

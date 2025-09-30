@@ -16,7 +16,7 @@ logging.basicConfig(
 
 # export KNOWLEDGE_BASE_ID=your_kb_id
 # export AWS_REGION=us-west-2
-os.environ['KNOWLEDGE_BASE_ID'] = '3VSYTQRHXH'
+os.environ['KNOWLEDGE_BASE_ID'] = 'your_kb_id'
 os.environ['AWS_REGION'] = 'us-west-2'
 
 RESPONSE_SYSTEM_PROMPT = """

@@ -1,12 +1,12 @@
 import streamlit as st
 from datetime import datetime
-import json
-import os
 from PIL import Image
-import base64
-from io import BytesIO
 import sys
+import os
 sys.path.append('.')
+
+# 이미지 경로 설정
+IMAGES_DIR = os.path.join(os.path.dirname(__file__), "..", "images")
 
 # 검수 에이전트 import 시도
 try:
@@ -76,29 +76,6 @@ st.markdown(
         font-size: 14px;
         color: #475569;
     }
-    .keyword-badges {
-        margin-top: 24px;
-    }
-    .keyword-badges h3 {
-        margin-bottom: 12px;
-    }
-    .keyword-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background-color: rgba(79, 70, 229, 0.12);
-        color: #4338ca;
-        font-size: 13px;
-        margin-right: 8px;
-        margin-bottom: 8px;
-        font-weight: 500;
-        letter-spacing: -0.01em;
-    }
-    .keyword-badge::before {
-        content: "#";
-        margin-right: 2px;
-    }
     @media (max-width: 1024px) {
         .product-rating-grid {
             grid-template-columns: 1fr;
@@ -109,36 +86,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-def image_to_base64(image):
-    buffered = BytesIO()
-    image.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    return img_str
-
-def base64_to_image(img_str):
-    img_data = base64.b64decode(img_str)
-    img = Image.open(BytesIO(img_data))
-    return img
-
 if 'comments' not in st.session_state:
-    # 이미지 미리 로드
-    flower_img_base64 = ""
-    earphone_img_base64 = ""
-
-    try:
-        flower_img = Image.open("../images/flower.webp")
-        flower_img.thumbnail((800, 600), Image.Resampling.LANCZOS)
-        flower_img_base64 = image_to_base64(flower_img)
-    except:
-        pass
-
-    try:
-        earphone_img = Image.open("../images/earphone.png")
-        earphone_img.thumbnail((800, 600), Image.Resampling.LANCZOS)
-        earphone_img_base64 = image_to_base64(earphone_img)
-    except:
-        pass
-
     st.session_state.comments = [
         {
             "id": 1,
@@ -146,7 +94,7 @@ if 'comments' not in st.session_state:
             "rating": 5,
             "content": "이 제품 정말 좋아요! 음질도 훌륭하고 배터리도 오래 갑니다.",
             "timestamp": "2024-01-15 14:30",
-            "images": []
+            "image": None
         },
         {
             "id": 2,
@@ -154,7 +102,7 @@ if 'comments' not in st.session_state:
             "rating": 1,
             "content": "완전 쓰레기네요. 돈 아까워요.",
             "timestamp": "2024-01-14 10:20",
-            "images": []
+            "image": None
         },
         {
             "id": 3,
@@ -162,7 +110,7 @@ if 'comments' not in st.session_state:
             "rating": 5,
             "content": "별로예요. 기대했는데 실망이에요.",
             "timestamp": "2024-01-13 16:45",
-            "images": []
+            "image": None
         },
         {
             "id": 4,
@@ -170,7 +118,7 @@ if 'comments' not in st.session_state:
             "rating": 4,
             "content": "이어폰 디자인이 깔끔하고 착용감도 편해요. 음질은 가격대비 괜찮은 것 같아요. 아침에 운동할 때 써봤는데 떨어지지도 않고 좋네요!",
             "timestamp": "2024-01-12 09:15",
-            "images": [earphone_img_base64] if earphone_img_base64 else []
+            "image_path": os.path.join(IMAGES_DIR, "earphone.png")
         },
         {
             "id": 5,
@@ -178,15 +126,11 @@ if 'comments' not in st.session_state:
             "rating": 3,
             "content": "이어폰 만만세",
             "timestamp": "2024-01-11 16:22",
-            "images": [flower_img_base64] if flower_img_base64 else []
+            "image_path": os.path.join(IMAGES_DIR, "flower.webp")
         }
     ]
 
 # 검수 결과 저장용 session state
-if 'moderation_logs' not in st.session_state:
-    st.session_state.moderation_logs = {}
-
-# 검수 결과별 comment IDs 추가
 if 'comment_moderation_results' not in st.session_state:
     st.session_state.comment_moderation_results = {}
 
@@ -196,9 +140,6 @@ st.title("🛍️ 상품 댓글 분석")
 total_reviews = len(st.session_state.comments)
 total_rating = sum([comment['rating'] for comment in st.session_state.comments])
 average_rating = total_rating / total_reviews if total_reviews else 0
-
-keywords = ["가성비", "배송", "재질", "음질", "디자인", "편의성"]
-keywords_html = "".join(f'<span class="keyword-badge">{kw}</span>' for kw in keywords)
 
 st.markdown(
     f"""
@@ -217,10 +158,6 @@ st.markdown(
                     <div class="metric-value">{average_rating:.1f} / 5.0</div>
                     <div class="metric-description">총 {total_reviews}개 리뷰</div>
                 </div>
-                <div class="keyword-badges">
-                    <h3>🏷️ 검색 키워드</h3>
-                    {keywords_html}
-                </div>
             </div>
         </div>
     </div>
@@ -238,16 +175,14 @@ for comment in reversed(st.session_state.comments):
             st.write(f"**{comment['author']}**")
             st.write(comment['content'])
 
-            if 'images' in comment and comment['images']:
+            # 이미지 표시 (image 또는 image_path)
+            image_to_display = comment.get('image') or comment.get('image_path')
+            if image_to_display:
                 st.write("📷 **첨부된 이미지:**")
-                img_cols = st.columns(min(len(comment['images']), 3))
-                for idx, img_str in enumerate(comment['images']):
-                    with img_cols[idx % 3]:
-                        try:
-                            img = base64_to_image(img_str)
-                            st.image(img, width=150, caption=f"이미지 {idx+1}")
-                        except Exception as e:
-                            st.error(f"이미지를 불러올 수 없습니다: {e}")
+                try:
+                    st.image(image_to_display, width=150)
+                except Exception as e:
+                    st.error(f"이미지를 불러올 수 없습니다: {e}")
 
         with col2:
             # 통일된 스타일의 별점 표시
@@ -266,69 +201,56 @@ for comment in reversed(st.session_state.comments):
 
         with col4:
             if st.button("🔍 검수하기", key=f"review_{comment['id']}", type="primary", use_container_width=True):
-                if AGENT_AVAILABLE:
-                    with st.spinner("검수 중..."):
-                        try:
-                            # 상품 정보 준비
-                            product_data = {
-                                "name": "프리미엄 무선 이어폰",
-                                "category": "전자기기"
-                            }
-
-                            # 이미지 파일 정보 준비 (있는 경우)
-                            media_files = []
-                            if comment.get('images'):
-                                for idx, img_base64 in enumerate(comment['images']):
-                                    media_files.append({
-                                        "filename": f"review_image_{idx+1}.jpg",
-                                        "url": f"data:image/jpeg;base64,{img_base64}"
-                                    })
-
-                            # 에이전트로 검수 실행
-                            result = moderate_review(
-                                review_content=comment['content'],
-                                rating=comment['rating'],
-                                product_data=product_data,
-                                media_files=media_files if media_files else None
-                            )
-
-                            # 검수 결과를 comment별로 저장
-                            st.session_state.comment_moderation_results[comment['id']] = {
-                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "overall_status": result['moderation_result']['overall_status'],
-                                "details": result['moderation_result'],
-                                "failed_checks": result['moderation_result'].get('failed_checks', []),
-                                "raw_response": result.get('raw_response', '')
-                            }
-
-                            # 검수 완료 - 별도 메시지 없이 결과만 저장
-
-                        except Exception as e:
-                            import traceback
-                            error_details = traceback.format_exc()
-                            print(f"=== 검수 에러 디버깅 ===")
-                            print(f"에러 메시지: {str(e)}")
-                            print(f"상세 스택 트레이스:")
-                            print(error_details)
-                            print(f"===================")
-
-                            st.error(f"검수 중 오류가 발생했습니다: {str(e)}")
-                            with st.expander("상세 에러 정보"):
-                                st.code(error_details)
-                else:
+                if not AGENT_AVAILABLE:
                     st.warning("검수 에이전트를 사용할 수 없습니다.")
+                    continue
+
+                with st.spinner("검수 중..."):
+                    try:
+                        product_data = {
+                            "name": "프리미엄 무선 이어폰",
+                            "category": "전자기기"
+                        }
+
+                        # 이미지 로드 (PIL Image로 변환)
+                        image = None
+                        if comment.get('image'):
+                            image = comment['image']
+                        elif comment.get('image_path'):
+                            try:
+                                image = Image.open(comment['image_path'])
+                            except Exception:
+                                pass
+
+                        result = moderate_review(
+                            review_content=comment['content'],
+                            rating=comment['rating'],
+                            product_data=product_data,
+                            image=image
+                        )
+
+                        moderation_result = result['moderation_result']
+                        if hasattr(moderation_result, 'model_dump'):
+                            moderation_result_dict = moderation_result.model_dump()
+                        else:
+                            moderation_result_dict = moderation_result
+
+                        st.session_state.comment_moderation_results[comment['id']] = {
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "overall_status": moderation_result_dict['overall_status'],
+                            "details": moderation_result_dict,
+                            "failed_checks": moderation_result_dict.get('failed_checks', []),
+                            "raw_response": result.get('raw_response', '')
+                        }
+                    except Exception as e:
+                        st.error(f"검수 중 오류가 발생했습니다: {str(e)}")
 
         # 검수 결과가 있으면 펼치기/접기 메뉴 표시
         if comment['id'] in st.session_state.comment_moderation_results:
             moderation_result = st.session_state.comment_moderation_results[comment['id']]
 
-            # 검수 결과 상태에 따른 색상
-            if moderation_result['overall_status'] == 'PASS':
-                status_color = "#10b981"  # green
-                status_icon = "✅"
-            else:
-                status_color = "#ef4444"  # red
-                status_icon = "❌"
+            # 검수 결과 상태에 따른 아이콘
+            status_icon = "✅" if moderation_result['overall_status'] == 'PASS' else "❌"
 
             with st.expander(f"{status_icon} 검수 결과 상세보기 - {moderation_result['overall_status']}", expanded=False):
                 # 검수 시간
@@ -393,11 +315,10 @@ with st.form("comment_form"):
         author_name = st.text_input("작성자명", placeholder="이름을 입력하세요")
         comment_content = st.text_area("댓글 내용", placeholder="상품에 대한 의견을 남겨주세요", height=100)
 
-        uploaded_images = st.file_uploader(
+        uploaded_image = st.file_uploader(
             "이미지 첨부 (선택사항)",
             type=['png', 'jpg', 'jpeg'],
-            accept_multiple_files=True,
-            help="최대 5개의 이미지를 업로드할 수 있습니다."
+            accept_multiple_files=False
         )
 
     with col2:
@@ -407,25 +328,16 @@ with st.form("comment_form"):
 
     if submitted:
         if author_name and comment_content:
-            images_base64 = []
+            image = None
 
-            if uploaded_images:
-                if len(uploaded_images) > 5:
-                    st.error("최대 5개의 이미지만 업로드할 수 있습니다.")
+            if uploaded_image:
+                try:
+                    image = Image.open(uploaded_image)
+                    max_size = (800, 600)
+                    image.thumbnail(max_size, Image.Resampling.LANCZOS)
+                except Exception as e:
+                    st.error(f"이미지 처리 중 오류가 발생했습니다: {e}")
                     st.stop()
-
-                for uploaded_file in uploaded_images:
-                    try:
-                        image = Image.open(uploaded_file)
-
-                        max_size = (800, 600)
-                        image.thumbnail(max_size, Image.Resampling.LANCZOS)
-
-                        img_base64 = image_to_base64(image)
-                        images_base64.append(img_base64)
-                    except Exception as e:
-                        st.error(f"이미지 처리 중 오류가 발생했습니다: {e}")
-                        st.stop()
 
             new_comment = {
                 "id": len(st.session_state.comments) + 1,
@@ -433,7 +345,7 @@ with st.form("comment_form"):
                 "rating": rating,
                 "content": comment_content,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "images": images_base64
+                "image": image
             }
             st.session_state.comments.append(new_comment)
             st.success("댓글이 등록되었습니다!")
@@ -448,33 +360,28 @@ with st.form("comment_form"):
                             "category": "전자기기"
                         }
 
-                        # 이미지 파일 정보 준비 (있는 경우)
-                        media_files = []
-                        if images_base64:
-                            for idx, img_base64 in enumerate(images_base64):
-                                media_files.append({
-                                    "filename": f"review_image_{idx+1}.jpg",
-                                    "url": f"data:image/jpeg;base64,{img_base64}"
-                                })
-
                         # 에이전트로 검수 실행
                         result = moderate_review(
                             review_content=comment_content,
                             rating=rating,
                             product_data=product_data,
-                            media_files=media_files if media_files else None
+                            image=image
                         )
+
+                        moderation_result = result['moderation_result']
+                        if hasattr(moderation_result, 'model_dump'):
+                            moderation_result_dict = moderation_result.model_dump()
+                        else:
+                            moderation_result_dict = moderation_result
 
                         # 검수 결과를 comment별로 저장
                         st.session_state.comment_moderation_results[new_comment['id']] = {
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "overall_status": result['moderation_result']['overall_status'],
-                            "details": result['moderation_result'],
-                            "failed_checks": result['moderation_result'].get('failed_checks', []),
+                            "overall_status": moderation_result_dict['overall_status'],
+                            "details": moderation_result_dict,
+                            "failed_checks": moderation_result_dict.get('failed_checks', []),
                             "raw_response": result.get('raw_response', '')
                         }
-
-                        # 새 댓글 검수 완료 - 별도 메시지 없이 결과만 저장
 
                     except Exception as e:
                         st.error(f"자동 검수 중 오류가 발생했습니다: {str(e)}")

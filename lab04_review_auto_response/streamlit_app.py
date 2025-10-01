@@ -77,29 +77,6 @@ st.markdown(
         font-size: 14px;
         color: #475569;
     }
-    .keyword-badges {
-        margin-top: 24px;
-    }
-    .keyword-badges h3 {
-        margin-bottom: 12px;
-    }
-    .keyword-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background-color: rgba(79, 70, 229, 0.12);
-        color: #4338ca;
-        font-size: 13px;
-        margin-right: 8px;
-        margin-bottom: 8px;
-        font-weight: 500;
-        letter-spacing: -0.01em;
-    }
-    .keyword-badge::before {
-        content: "#";
-        margin-right: 2px;
-    }
     @media (max-width: 1024px) {
         .product-rating-grid {
             grid-template-columns: 1fr;
@@ -186,9 +163,6 @@ total_reviews = len(st.session_state.comments)
 total_rating = sum([comment['rating'] for comment in st.session_state.comments])
 average_rating = total_rating / total_reviews if total_reviews else 0
 
-keywords = ["가성비", "배송", "재질", "음질", "디자인", "편의성"]
-keywords_html = "".join(f'<span class="keyword-badge">{kw}</span>' for kw in keywords)
-
 st.markdown(
     f"""
     <div class="product-rating-container">
@@ -205,10 +179,6 @@ st.markdown(
                     <div class="metric-label">현재 평점</div>
                     <div class="metric-value">{average_rating:.1f} / 5.0</div>
                     <div class="metric-description">총 {total_reviews}개 리뷰</div>
-                </div>
-                <div class="keyword-badges">
-                    <h3>🏷️ 검색 키워드</h3>
-                    {keywords_html}
                 </div>
             </div>
         </div>
@@ -347,10 +317,6 @@ for comment in reversed(st.session_state.comments):
                 if not success and 'error' in auto_response:
                     st.error(f"생성 중 오류: {auto_response['error']}")
 
-                # 원본 리뷰 텍스트
-                with st.expander("원본 리뷰 텍스트", expanded=False):
-                    st.code(auto_response.get('review_text', '텍스트 없음'), language='text')
-
         st.markdown("---")
 
 st.markdown("---")
@@ -364,13 +330,6 @@ with st.form("comment_form"):
         author_name = st.text_input("작성자명", placeholder="이름을 입력하세요")
         comment_content = st.text_area("리뷰 내용", placeholder="상품에 대한 의견을 남겨주세요", height=100)
 
-        uploaded_images = st.file_uploader(
-            "이미지 첨부 (선택사항)",
-            type=['png', 'jpg', 'jpeg'],
-            accept_multiple_files=True,
-            help="최대 5개의 이미지를 업로드할 수 있습니다."
-        )
-
     with col2:
         rating = st.selectbox("평점", [5, 4, 3, 2, 1], format_func=lambda x: f"⭐ {x}점")
 
@@ -378,33 +337,13 @@ with st.form("comment_form"):
 
     if submitted:
         if author_name and comment_content:
-            images_base64 = []
-
-            if uploaded_images:
-                if len(uploaded_images) > 5:
-                    st.error("최대 5개의 이미지만 업로드할 수 있습니다.")
-                    st.stop()
-
-                for uploaded_file in uploaded_images:
-                    try:
-                        image = Image.open(uploaded_file)
-
-                        max_size = (800, 600)
-                        image.thumbnail(max_size, Image.Resampling.LANCZOS)
-
-                        img_base64 = image_to_base64(image)
-                        images_base64.append(img_base64)
-                    except Exception as e:
-                        st.error(f"이미지 처리 중 오류가 발생했습니다: {e}")
-                        st.stop()
-
             new_comment = {
                 "id": len(st.session_state.comments) + 1,
                 "author": author_name,
                 "rating": rating,
                 "content": comment_content,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "images": images_base64
+                "images": []
             }
             st.session_state.comments.append(new_comment)
             st.success("리뷰가 등록되었습니다!")

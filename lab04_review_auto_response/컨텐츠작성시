@@ -1,7 +1,0 @@
-1) kb datasource 싱크 되는지 확인
-2) env 설정 `export KNOWLEDGE_BASE_ID=your_kb_id` 
-`export AWS_REGION=us-west-2`
-3) 로깅방법 가이드 
-4) 모델 통일 
-5) structured output으로 모두 통일?
-6) 코드도 정리 (agent factory방식 )

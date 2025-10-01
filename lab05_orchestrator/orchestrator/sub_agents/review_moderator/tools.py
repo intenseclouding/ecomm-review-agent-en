@@ -84,10 +84,10 @@ def check_profanity(content: str) -> Any:
     """
     profanity_agent = Agent(
         model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-        system_prompt=PROFANITY_PROMPT
+        system_prompt=PROFANITY_PROMPT,
+        callback_handler=None
     )
     return profanity_agent(f"다음 리뷰 내용의 선정적/욕설 표현을 검수하세요. <review_content>{content}</review_content>")
-
 
 @tool
 def check_image_product_match(image_path: str, product_data: Dict) -> Any:
@@ -111,7 +111,8 @@ def check_image_product_match(image_path: str, product_data: Dict) -> Any:
         image_match_agent = Agent(
             model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             system_prompt=IMAGE_MATCH_PROMPT,
-            tools=[image_reader]
+            tools=[image_reader],
+            callback_handler=None
         )
 
         return image_match_agent(f"다음 이미지와 제품정보를 기반으로 상호관련 여부를 체크해주세요. <image_path>{image_path}</image_path> <product_data>{product_data}</product_data>")
@@ -136,6 +137,7 @@ def check_rating_consistency(rating: int, content: str) -> Any:
     """
     rating_consistency_agent = Agent(
         model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        callback_handler=None,
         system_prompt=RATING_CONSISTENCY_PROMPT
     )
     return rating_consistency_agent(f"다음 별점과 리뷰 내용의 일치성을 분석해주세요. <rating>{rating}</rating> <review_content>{content}</review_content>")

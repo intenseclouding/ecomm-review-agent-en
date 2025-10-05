@@ -18,7 +18,7 @@ except ImportError as e:
     AGENT_AVAILABLE = False
 
 st.set_page_config(
-    page_title="리뷰 자동답변 시스템",
+    page_title="Lab04. 답글 생성 Agent",
     page_icon="🛍️",
     layout="wide"
 )
@@ -157,18 +157,20 @@ if 'auto_responses' not in st.session_state:
     st.session_state.auto_responses = {}
 
 # 메인 콘텐츠 영역
-st.title("🛍️ 리뷰 자동답변 시스템")
+st.header("🛍️ Lab 04. 리뷰 자동답변 시스템")
+st.subheader("고객 리뷰에 대해 셀러의 답변을 자동으로 하는 시스템 실습")
+st.markdown("---")
 
 total_reviews = len(st.session_state.comments)
 total_rating = sum([comment['rating'] for comment in st.session_state.comments])
 average_rating = total_rating / total_reviews if total_reviews else 0
 
+st.subheader("📦 상품 정보")
 st.markdown(
     f"""
     <div class="product-rating-container">
         <div class="product-rating-grid">
             <div>
-                <h3>📦 상품 정보</h3>
                 <p><strong>상품명:</strong> 프리미엄 무선 이어폰</p>
                 <p><strong>가격:</strong> 89,000원</p>
                 <p><strong>상품 설명:</strong></p>
@@ -176,9 +178,8 @@ st.markdown(
             </div>
             <div>
                 <div class="rating-card">
-                    <div class="metric-label">현재 평점</div>
+                    <div class="metric-label"><strong>평균 평점</strong> (총 {total_reviews}개 리뷰)</div>
                     <div class="metric-value">{average_rating:.1f} / 5.0</div>
-                    <div class="metric-description">총 {total_reviews}개 리뷰</div>
                 </div>
             </div>
         </div>

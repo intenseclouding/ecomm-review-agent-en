@@ -79,7 +79,7 @@ def comprehensive_analyzer(review_data: Dict[str, Any], image: Optional[PILImage
     )
 
     # 리뷰 종합 분석 결과 응답
-    orchestrator_agent(f"<review_data>{review_data}</review_data><image_path>{image_path if image_path else "없음"}</image_path>")
+    orchestrator_agent(f"<review_data>{review_data}</review_data><image_path>{image_path if image_path else '없음'}</image_path>")
     result = orchestrator_agent.structured_output(
         ReviewAnalysis,
         "리뷰데이터에 대한 분석 결과를 구조화된 형태로 추출하시오"

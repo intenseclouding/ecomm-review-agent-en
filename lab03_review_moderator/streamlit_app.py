@@ -17,7 +17,7 @@ except ImportError as e:
     AGENT_AVAILABLE = False
 
 st.set_page_config(
-    page_title="댓글 분석 테스트",
+    page_title="Lab 03. 리뷰 검수 Agent",
     page_icon="🛍️",
     layout="wide"
 )
@@ -134,19 +134,21 @@ if 'comments' not in st.session_state:
 if 'comment_moderation_results' not in st.session_state:
     st.session_state.comment_moderation_results = {}
 
-# 메인 콘텐츠 영역
-st.title("🛍️ 상품 댓글 분석")
+# 메인 콘텐츠 영역)
+st.header("🏷️ Lab 03. 리뷰 검수 Agent")
+st.subheader("부적절 리뷰 검수 시스템 실습")
+st.markdown("---")
 
 total_reviews = len(st.session_state.comments)
 total_rating = sum([comment['rating'] for comment in st.session_state.comments])
 average_rating = total_rating / total_reviews if total_reviews else 0
 
+st.subheader("📦 상품 정보")
 st.markdown(
     f"""
     <div class="product-rating-container">
         <div class="product-rating-grid">
             <div>
-                <h3>📦 상품 정보</h3>
                 <p><strong>상품명:</strong> 프리미엄 무선 이어폰</p>
                 <p><strong>가격:</strong> 89,000원</p>
                 <p><strong>상품 설명:</strong></p>
@@ -154,9 +156,8 @@ st.markdown(
             </div>
             <div>
                 <div class="rating-card">
-                    <div class="metric-label">현재 평점</div>
+                    <div class="metric-label"><strong>평균 평점</strong> (총 {total_reviews}개 리뷰)</div>
                     <div class="metric-value">{average_rating:.1f} / 5.0</div>
-                    <div class="metric-description">총 {total_reviews}개 리뷰</div>
                 </div>
             </div>
         </div>

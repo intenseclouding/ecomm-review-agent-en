@@ -69,7 +69,7 @@ def extract_keywords_from_result(match_result: Dict[str, Any]) -> List[str]:
         return matched_keywords
 
 st.set_page_config(
-    page_title="키워드 검색 시스템",
+    page_title="Lab 02. 키워드 검색 Agent",
     page_icon="🏷️",
     layout="wide"
 )
@@ -187,7 +187,9 @@ if 'comments' not in st.session_state:
     ]
 
 # 메인 콘텐츠 영역
-st.title("🏷️ 키워드 검색 시스템")
+st.header("🏷️ Lab 02. 키워드 검색 시스템")
+st.subheader("한국어 리뷰에서 키워드 검색 및 매칭 시스템 실습")
+st.markdown("---")
 
 # 제품 정보 및 평점 계산
 total_reviews = len(st.session_state.comments)
@@ -195,21 +197,22 @@ total_rating = sum([comment['rating'] for comment in st.session_state.comments])
 average_rating = total_rating / total_reviews if total_reviews else 0
 
 # 제품 정보 섹션 (최상단 이동)
+st.subheader("📦 상품 정보")
+# <h3 style="color:black">📦 상품 정보</h3>
 st.markdown(
     f"""
     <div class="product-rating-container">
         <div class="product-rating-grid">
             <div>
-                <h3>📦 상품 정보</h3>
+                <h3 style="color:black">📦 상품 정보</h3>
                 <p><strong>상품명:</strong> 프리미엄 무선 이어폰</p>
                 <p><strong>가격:</strong> 89,000원</p>
                 <p><strong>상품 설명:</strong></p>
                 <p>고품질 사운드와 긴 배터리 수명을 자랑하는 프리미엄 무선 이어폰입니다. 노이즈 캔슬링 기능과 편안한 착용감을 제공합니다.</p>
             </div>
             <div class="rating-card">
-                <div class="metric-label">현재 평점</div>
+                <div class="metric-label"><strong>평균 평점</strong> (총 {total_reviews}개 리뷰)</div>
                 <div class="metric-value">{average_rating:.1f} / 5.0</div>
-                <div class="metric-description">총 {total_reviews}개 리뷰</div>
             </div>
         </div>
     </div>

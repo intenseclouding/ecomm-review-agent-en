@@ -69,7 +69,7 @@ def extract_keywords_from_result(match_result: Dict[str, Any]) -> List[str]:
         return matched_keywords
 
 st.set_page_config(
-    page_title="Lab 02. 키워드 검색 시스템",
+    page_title="Lab 02. 키워드 검색 Agent",
     page_icon="🏷️",
     layout="wide"
 )

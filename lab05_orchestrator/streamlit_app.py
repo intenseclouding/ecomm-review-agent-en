@@ -83,7 +83,7 @@ def save_uploaded_image(uploaded_file) -> str:
     return filepath
 
 st.set_page_config(
-    page_title="Lab 05. 종합 리뷰 분석 시스템",
+    page_title="Lab 05. 종합 리뷰 분석 Agent",
     page_icon="🔬",
     layout="wide"
 )

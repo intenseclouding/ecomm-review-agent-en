@@ -3,7 +3,7 @@ import json
 from uuid import uuid4
 
 def invoke_agentcore_runtime(prompt: dict):
-    client = boto3.client('bedrock-agentcore', region_name='us-east-1')
+    client = boto3.client('bedrock-agentcore', region_name='us-west-2')
     payload = json.dumps({
         "input": prompt
     })

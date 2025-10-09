@@ -1,23 +1,23 @@
+import json
+import logging
+import os
+from typing import Any, Dict, List
+
 from strands import Agent, tool
 from strands_tools import retrieve, use_llm
-import os
-import logging
-import json
-from typing import Dict, Any, List
 
 # Configure the root strands logger
 logging.getLogger("strands").setLevel(logging.INFO)
 
 # Add a handler to see the logs
 logging.basicConfig(
-    format="%(levelname)s | %(name)s | %(message)s", 
-    handlers=[logging.StreamHandler()]
+    format="%(levelname)s | %(name)s | %(message)s", handlers=[logging.StreamHandler()]
 )
 
 # export KNOWLEDGE_BASE_ID=your_kb_id
 # export AWS_REGION=us-west-2
-os.environ['KNOWLEDGE_BASE_ID'] = 'your_kb_id'
-os.environ['AWS_REGION'] = 'us-west-2'
+os.environ["KNOWLEDGE_BASE_ID"] = "your_kb_id"
+os.environ["AWS_REGION"] = "us-west-2"
 
 RESPONSE_SYSTEM_PROMPT = """
     당신은 이커머스 셀러의 고객 리뷰에 자동으로 답변하는 AI 어시스턴트입니다.
@@ -68,6 +68,7 @@ SELLER_ANSWER_PROMPT = """
 단, 공손한 톤이어야 합니다. 
 """
 
+
 def generate_auto_response(review: str) -> Dict[str, Any]:
     """
     리뷰에 대한 자동 응답을 생성하는 메인 함수
@@ -82,22 +83,20 @@ def generate_auto_response(review: str) -> Dict[str, Any]:
     # 각 요청마다 새로운 Agent 생성
     auto_response_agent = Agent(
         tools=[retrieve, use_llm],
-        system_prompt=RESPONSE_SYSTEM_PROMPT + f"""
+        system_prompt=RESPONSE_SYSTEM_PROMPT
+        + f"""
         SELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}
-        """
+        """,
     )
 
     # 리뷰에 대한 자동 응답 생성
-    response = auto_response_agent(review) 
+    response = auto_response_agent(review)
 
     # tool_result 를 추출
     tool_results = filter_tool_result(auto_response_agent)
-   
+
     # 결과 반환 - tool_results를 포함
-    result = {
-        "response" : str(response),
-        "tool_results": tool_results
-    }
+    result = {"response": str(response), "tool_results": tool_results}
     return result
 
 

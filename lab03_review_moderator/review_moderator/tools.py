@@ -1,11 +1,21 @@
-from strands import Agent, tool
-from strands_tools import image_reader
-import re
 import json
+import os
+import re
 import threading
 import time
-import os
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import logging
+from strands import Agent, tool
+from strands_tools import image_reader
+
+# Configure the root strands logger
+logging.getLogger("strands").setLevel(logging.INFO)
+
+# Add a handler to see the logs
+logging.basicConfig(
+    format="%(levelname)s | %(name)s | %(message)s", handlers=[logging.StreamHandler()]
+)
 
 PROFANITY_PROMPT = """
     리뷰 내용이 부적절한 표현을 포함하고 있는지 검수해주세요:
@@ -71,6 +81,7 @@ RATING_CONSISTENCY_PROMPT = """
     }
 """
 
+
 @tool
 def check_profanity(content: str) -> Any:
     """
@@ -84,9 +95,11 @@ def check_profanity(content: str) -> Any:
     """
     profanity_agent = Agent(
         model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-        system_prompt=PROFANITY_PROMPT
+        system_prompt=PROFANITY_PROMPT,
     )
-    return profanity_agent(f"다음 리뷰 내용의 선정적/욕설 표현을 검수하세요. <review_content>{content}</review_content>")
+    return profanity_agent(
+        f"다음 리뷰 내용의 선정적/욕설 표현을 검수하세요. <review_content>{content}</review_content>"
+    )
 
 
 @tool
@@ -106,22 +119,21 @@ def check_image_product_match(image_path: str, product_data: Dict) -> Any:
             return {
                 "status": "SKIP",
                 "reason": "업로드된 이미지가 없습니다.",
-                "confidence": 1.0
+                "confidence": 1.0,
             }
         image_match_agent = Agent(
             model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             system_prompt=IMAGE_MATCH_PROMPT,
-            tools=[image_reader]
+            tools=[image_reader],
         )
 
-        return image_match_agent(f"다음 이미지와 제품정보를 기반으로 상호관련 여부를 체크해주세요. <image_path>{image_path}</image_path> <product_data>{product_data}</product_data>")
+        return image_match_agent(
+            f"다음 이미지와 제품정보를 기반으로 상호관련 여부를 체크해주세요. <image_path>{image_path}</image_path> <product_data>{product_data}</product_data>"
+        )
     except Exception as e:
-        return {
-            "status": "ERROR",
-            "reason": str(e),
-            "confidence": 1.0
-        }
-    
+        return {"status": "ERROR", "reason": str(e), "confidence": 1.0}
+
+
 @tool
 def check_rating_consistency(rating: int, content: str) -> Any:
     """
@@ -136,6 +148,8 @@ def check_rating_consistency(rating: int, content: str) -> Any:
     """
     rating_consistency_agent = Agent(
         model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-        system_prompt=RATING_CONSISTENCY_PROMPT
+        system_prompt=RATING_CONSISTENCY_PROMPT,
     )
-    return rating_consistency_agent(f"다음 별점과 리뷰 내용의 일치성을 분석해주세요. <rating>{rating}</rating> <review_content>{content}</review_content>")
+    return rating_consistency_agent(
+        f"다음 별점과 리뷰 내용의 일치성을 분석해주세요. <rating>{rating}</rating> <review_content>{content}</review_content>"
+    )

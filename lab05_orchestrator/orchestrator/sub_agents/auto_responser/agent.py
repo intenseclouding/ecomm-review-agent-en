@@ -1,23 +1,23 @@
+import json
+import logging
+import os
+from typing import Any, Dict, List
+
 from strands import Agent, tool
 from strands_tools import retrieve, use_llm
-import os
-import logging
-import json
-from typing import Dict, Any, List
 
 # Configure the root strands logger
 logging.getLogger("strands").setLevel(logging.INFO)
 
 # Add a handler to see the logs
 logging.basicConfig(
-    format="%(levelname)s | %(name)s | %(message)s", 
-    handlers=[logging.StreamHandler()]
+    format="%(levelname)s | %(name)s | %(message)s", handlers=[logging.StreamHandler()]
 )
 
 # export KNOWLEDGE_BASE_ID=your_kb_id
 # export AWS_REGION=us-west-2
-os.environ['KNOWLEDGE_BASE_ID'] = 'your_kb_id'
-os.environ['AWS_REGION'] = 'us-west-2'
+os.environ["KNOWLEDGE_BASE_ID"] = "your_kb_id"
+os.environ["AWS_REGION"] = "us-west-2"
 
 RESPONSE_SYSTEM_PROMPT = """
     당신은 이커머스 셀러의 고객 리뷰에 자동으로 답변하는 AI 어시스턴트입니다.
@@ -68,6 +68,7 @@ SELLER_ANSWER_PROMPT = """
 단, 공손한 톤이어야 합니다. 
 """
 
+
 @tool
 def generate_auto_response(review: str, sentiment: str) -> Dict[str, Any]:
     """
@@ -75,7 +76,7 @@ def generate_auto_response(review: str, sentiment: str) -> Dict[str, Any]:
 
     Args:
         review (str): 분석할 리뷰 텍스트
-        sentiment (str): 리뷰의 감정 상태 
+        sentiment (str): 리뷰의 감정 상태
 
     Returns:
         Dict[str, Any]: 자동 응답 결과
@@ -85,22 +86,22 @@ def generate_auto_response(review: str, sentiment: str) -> Dict[str, Any]:
     auto_response_agent = Agent(
         tools=[retrieve, use_llm],
         callback_handler=None,
-        system_prompt=RESPONSE_SYSTEM_PROMPT + f"""
+        system_prompt=RESPONSE_SYSTEM_PROMPT
+        + f"""
         SELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}
-        """
+        """,
     )
 
     # 리뷰에 대한 자동 응답 생성
-    response = auto_response_agent(f"다음 리뷰와 감정상태를 반영하여 답글을 생성해주세요. <review>{review}</review><sentiment>{sentiment}</sentiment>") 
+    response = auto_response_agent(
+        f"다음 리뷰와 감정상태를 반영하여 답글을 생성해주세요. <review>{review}</review><sentiment>{sentiment}</sentiment>"
+    )
 
     # tool_result 를 추출
     tool_results = filter_tool_result(auto_response_agent)
-   
+
     # 결과 반환 - tool_results를 포함
-    result = {
-        "response" : str(response),
-        "tool_results": tool_results
-    }
+    result = {"response": str(response), "tool_results": tool_results}
     return result
 
 

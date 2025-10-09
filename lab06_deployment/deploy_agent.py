@@ -13,7 +13,7 @@ response = agentcore_runtime.configure(
     auto_create_ecr=True,
     requirements_file="requirements.txt",
     region=region,
-    agent_name=agent_name
+    agent_name=agent_name,
 )
 
 launch_result = agentcore_runtime.launch(auto_update_on_conflict=True)

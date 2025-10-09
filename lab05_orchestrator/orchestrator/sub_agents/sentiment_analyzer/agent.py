@@ -1,15 +1,14 @@
-from strands import Agent, tool
 import json
 import logging
 
+from strands import Agent, tool
 
 # Configure the root strands logger
 logging.getLogger("strands").setLevel(logging.INFO)
 
 # Add a handler to see the logs
 logging.basicConfig(
-    format="%(levelname)s | %(name)s | %(message)s", 
-    handlers=[logging.StreamHandler()]
+    format="%(levelname)s | %(name)s | %(message)s", handlers=[logging.StreamHandler()]
 )
 
 SYSTEM_PROMPT = """
@@ -47,6 +46,7 @@ SYSTEM_PROMPT = """
 """
 # 감정 분석 Agent 생성
 
+
 @tool
 def analyze_sentiment(review_content: str) -> dict:
     """
@@ -61,9 +61,9 @@ def analyze_sentiment(review_content: str) -> dict:
     sentiment_agent = Agent(
         model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
         system_prompt=SYSTEM_PROMPT,
-        callback_handler=None
+        callback_handler=None,
     )
-    
+
     # Strands Agent 호출
     result = sentiment_agent(review_content)
     str_result = str(result)
@@ -71,7 +71,5 @@ def analyze_sentiment(review_content: str) -> dict:
     return {
         "success": True,
         "sentiment_result": json.loads(str_result),
-        "raw_response": str_result
+        "raw_response": str_result,
     }
-
-

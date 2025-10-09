@@ -1,19 +1,19 @@
-from strands import Agent, tool
-from strands_tools import file_read
-from string import Template
 import json
 import logging
 from dataclasses import dataclass
+from string import Template
 from typing import List, Literal
+
 from pydantic import BaseModel, Field
+from strands import Agent, tool
+from strands_tools import file_read
 
 # Configure the root strands logger
 logging.getLogger("strands").setLevel(logging.INFO)
 
 # Add a handler to see the logs
 logging.basicConfig(
-    format="%(levelname)s | %(name)s | %(message)s", 
-    handlers=[logging.StreamHandler()]
+    format="%(levelname)s | %(name)s | %(message)s", handlers=[logging.StreamHandler()]
 )
 
 
@@ -56,32 +56,50 @@ SYSTEM_PROMPT = """
 </주의사항>
 """
 
-KEYWORD_EXTRACTOR_PROMPT_TEMPLATE = Template("""
+KEYWORD_EXTRACTOR_PROMPT_TEMPLATE = Template(
+    """
 아래 리뷰에서 등록된 키워드와 매칭되는 내용을 찾아주세요.
 <리뷰>
     $review_text
 </리뷰>
-""")
+"""
+)
 
 
 class KeywordHighlight(BaseModel):
     """키워드별 매칭되는 문장리스트 데이터셋"""
+
     keyword: str = Field(description="기준 키워드")
     match_type: Literal["exact", "partial", "semantic"]
     original_phrase: str = Field(description="리뷰에서 발견된 원본 구문")
 
+
 class KeywordAnalysisResult(BaseModel):
     """키워드 분석 결과를 담는 클래스"""
+
     matched_keywords: List[KeywordHighlight]
+
 
 @tool
 def search_keywords(review_text: str) -> dict:
+    """
+    리뷰에서 키워드에 매칭되는 문장을 검색하는 함수
+
+    Args:
+        review_text (str): 리뷰 텍스트
+
+    Returns:
+        dict: 키워드 분석 결과
+    """
+
+    logging.info(f"search_keywords called with review_text: {review_text}")
+
     # 키워드 매칭 Agent
     keyword_agent = Agent(
         model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
         tools=[file_read],
         callback_handler=None,
-        system_prompt=SYSTEM_PROMPT
+        system_prompt=SYSTEM_PROMPT,
     )
 
     # Agent 실행
@@ -89,14 +107,15 @@ def search_keywords(review_text: str) -> dict:
     agent_response = keyword_agent(prompt)
     str_response = str(agent_response)
 
-    # Structured output 으로 출력 
+    # Structured output 으로 출력
     result = keyword_agent.structured_output(
-        KeywordAnalysisResult,
-        "키워드 분석 결과를 구조화된 형태로 추출하시오"
+        KeywordAnalysisResult, "키워드 분석 결과를 구조화된 형태로 추출하시오"
     )
-    
+
     return {
         "success": True,
-        "analysis_result": result.model_dump() if hasattr(result, 'model_dump') else result.__dict__,
-        "raw_response": str_response
+        "analysis_result": (
+            result.model_dump() if hasattr(result, "model_dump") else result.__dict__
+        ),
+        "raw_response": str_response,
     }

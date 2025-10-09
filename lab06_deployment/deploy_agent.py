@@ -1,10 +1,12 @@
 from bedrock_agentcore_starter_toolkit import Runtime
 from boto3.session import Session
+
 boto_session = Session()
 region = boto_session.region_name
 
 agentcore_runtime = Runtime()
 agent_name = "review_agent"
+
 response = agentcore_runtime.configure(
     entrypoint="agent/agentcore_agent.py",
     auto_create_execution_role=True,
@@ -13,8 +15,6 @@ response = agentcore_runtime.configure(
     region=region,
     agent_name=agent_name
 )
-
-print(response)
 
 launch_result = agentcore_runtime.launch(auto_update_on_conflict=True)
 print(launch_result)

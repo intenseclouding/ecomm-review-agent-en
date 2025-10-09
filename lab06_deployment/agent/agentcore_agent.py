@@ -5,8 +5,8 @@ app = BedrockAgentCoreApp()
 
 @app.entrypoint
 def invoke_agent(payload):
-    user_prompt = payload.get("prompt")
-    response = comprehensive_analyzer(user_prompt)
+    review_data = payload.get("review_data")
+    response = comprehensive_analyzer(review_data)
     return {"result": response}
 
 if __name__ == "__main__":

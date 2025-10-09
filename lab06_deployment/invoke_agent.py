@@ -2,10 +2,10 @@ import boto3
 import json
 from uuid import uuid4
 
-def invoke_agentcore_runtime(prompt: dict):
+def invoke_agentcore_runtime(review_data: dict):
     client = boto3.client('bedrock-agentcore', region_name='us-west-2')
     payload = json.dumps({
-        "input": prompt
+        "review_data": review_data
     })
 
     runtime_arn = "<your-runtime-agent>"
@@ -22,5 +22,6 @@ def invoke_agentcore_runtime(prompt: dict):
     return response_data
     
 if __name__ == "__main__":
-    response_data = invoke_agentcore_runtime({"prompt": "Explain machine learning in simple terms"})
+    review_data = {'review_id': 5, 'content': '이어폰 만만세', 'rating': 3, 'author': '정수연', 'timestamp': '2024-01-11 16:22'}
+    response_data = invoke_agentcore_runtime(review_data)
     print("Agent Response:", response_data)

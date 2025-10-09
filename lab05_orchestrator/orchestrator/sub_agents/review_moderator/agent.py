@@ -11,7 +11,7 @@ from strands import Agent, tool
 from .tools import check_image_product_match, check_profanity, check_rating_consistency
 
 # Configure the root strands logger
-logging.getLogger("strands").setLevel(logging.DEBUG)
+logging.getLogger("strands").setLevel(logging.INFO)
 
 # Add a handler to see the logs
 logging.basicConfig(

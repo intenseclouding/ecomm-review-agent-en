@@ -10,7 +10,7 @@ from strands import Agent, tool
 from strands_tools import image_reader
 
 # Configure the root strands logger
-logging.getLogger("strands").setLevel(logging.DEBUG)
+logging.getLogger("strands").setLevel(logging.INFO)
 
 # Add a handler to see the logs
 logging.basicConfig(

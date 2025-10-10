@@ -2,10 +2,15 @@ import json
 from uuid import uuid4
 
 import boto3
+from botocore.config import Config
 
+agentcore_config = Config(
+    connect_timeout=600,  # 120 seconds for connection timeout
+    read_timeout=600      # 300 seconds for read timeout
+)
 
 def invoke_agentcore_runtime(product_data: dict, review_data: dict):
-    client = boto3.client("bedrock-agentcore", region_name="us-west-2")
+    client = boto3.client("bedrock-agentcore", region_name="us-west-2", config=agentcore_config)
     payload = json.dumps({"product_data": product_data, "review_data": review_data})
 
     runtime_arn = "<your-runtime-agent>"

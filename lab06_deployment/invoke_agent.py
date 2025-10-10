@@ -4,9 +4,9 @@ from uuid import uuid4
 import boto3
 
 
-def invoke_agentcore_runtime(review_data: dict):
+def invoke_agentcore_runtime(product_data: dict, review_data: dict):
     client = boto3.client("bedrock-agentcore", region_name="us-west-2")
-    payload = json.dumps({"review_data": review_data})
+    payload = json.dumps({"product_data": product_data, "review_data": review_data})
 
     runtime_arn = "<your-runtime-agent>"
     session_id = str(uuid4())
@@ -30,5 +30,6 @@ if __name__ == "__main__":
         "author": "정수연",
         "timestamp": "2024-01-11 16:22",
     }
-    response_data = invoke_agentcore_runtime(review_data)
+    product_data = {"name": "프리미엄 무선 이어폰", "category": "전자기기"}
+    response_data = invoke_agentcore_runtime(product_data, review_data)
     print("Agent Response:", response_data)

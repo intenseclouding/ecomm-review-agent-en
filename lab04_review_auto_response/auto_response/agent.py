@@ -4,7 +4,7 @@ import os
 from typing import Any, Dict, List
 
 from strands import Agent, tool
-from strands_tools import retrieve, use_llm
+from strands_tools import retrieve
 
 # Configure the root strands logger
 logging.getLogger("strands").setLevel(logging.INFO)
@@ -82,7 +82,7 @@ def generate_auto_response(review: str) -> Dict[str, Any]:
 
     # 각 요청마다 새로운 Agent 생성
     auto_response_agent = Agent(
-        tools=[retrieve, use_llm],
+        tools=[retrieve],
         system_prompt=RESPONSE_SYSTEM_PROMPT
         + f"""
         SELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}

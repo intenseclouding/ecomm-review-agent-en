@@ -30,7 +30,6 @@ PROFANITY_PROMPT = """
     한국어의 미묘한 뉘앙스와 맥락을 고려하여 판단해주세요.
 
     응답은 반드시 다음 JSON 형식으로만 제공해주세요. 답변에 백틱이나 코드 블록 포맷(```json, ```python 등)을 붙이지 마세요. :
-    ```
     {
         "is_appropriate": true/false,
         "confidence": 0.0-1.0,

@@ -5,8 +5,8 @@ import boto3
 from botocore.config import Config
 
 agentcore_config = Config(
-    connect_timeout=600,  # 120 seconds for connection timeout
-    read_timeout=600      # 300 seconds for read timeout
+    connect_timeout=120,  # 120 seconds for connection timeout
+    read_timeout=300      # 300 seconds for read timeout
 )
 
 def invoke_agentcore_runtime(product_data: dict, review_data: dict):

@@ -35,12 +35,6 @@ UNIFIED_MODERATOR_PROMPT = """
     - 전체 맥락을 고려한 종합적 판단
     </주의사항>
 
-    <overall_status 결정 규칙>
-    - profanity_check가 FAIL이면 overall_status는 반드시 "FAIL"로 설정
-    - profanity_check가 PASS라면, rating_consistency나 image_match가 FAIL이어도 overall_status는 "PASS"로 설정
-    - 즉, 욕설/선정성 검수만 전체 검수의 통과/실패를 결정합니다
-    </overall_status 결정 규칙>
-
     <출력형식>
     모든 검수를 수행한 후, 반드시 다음 JSON 스키마로 응답해주세요. 다른 설명이나 백틱(```json) 등은 절대 포함하지 마세요.:
 

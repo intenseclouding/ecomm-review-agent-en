@@ -9,7 +9,7 @@ agent_name = "review_agent"
 
 response = agentcore_runtime.configure(
     entrypoint="agent/agentcore_agent.py",
-    auto_create_execution_role=True,
+    execution_role="<your-execution-role-arn>",
     auto_create_ecr=True,
     requirements_file="requirements.txt",
     region=region,

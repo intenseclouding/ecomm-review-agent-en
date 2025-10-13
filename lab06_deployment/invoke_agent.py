@@ -13,11 +13,11 @@ def invoke_agentcore_runtime(product_data: dict, review_data: dict):
     client = boto3.client("bedrock-agentcore", region_name="us-west-2", config=agentcore_config)
     payload = json.dumps({"product_data": product_data, "review_data": review_data})
 
-    runtime_arn = "<your-runtime-agent>"
+    agent_runtime_arn = "<your-agent-runtime-arn>"
     session_id = str(uuid4())
 
     response = client.invoke_agent_runtime(
-        agentRuntimeArn=runtime_arn,
+        agentRuntimeArn=agent_runtime_arn,
         runtimeSessionId=session_id,  # Must be 33+ chars
         payload=payload,
     )

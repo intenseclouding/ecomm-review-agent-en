@@ -26,7 +26,7 @@ SYSTEM_PROMPT = """
 </핵심작업>
 
 <작업프로세스>
-1. 등록된 키워드 조회: file_read 도구를 사용하여 "registered_keywords.txt" 파일을 읽고 등록된 키워드 목록을 획득해주세요
+1. 등록된 키워드 조회: file_read 도구를 사용하여 "lab02_review_keyword_extractor/registered_keywords.txt" 파일을 읽고 등록된 키워드 목록을 획득해주세요
 2. 리뷰 텍스트 분석: 등록된 키워드를 참고하여 리뷰에서 관련 키워드와 구문을 식별해주세요
 3. 매칭 수행:
    - 완전 일치를 우선해주세요

@@ -17,4 +17,6 @@ response = agentcore_runtime.configure(
 )
 
 launch_result = agentcore_runtime.launch(auto_update_on_conflict=True)
-print(launch_result)
+print('-'*10)
+print("Agent ARN: " + launch_result.agent_arn)
+print('-'*10)

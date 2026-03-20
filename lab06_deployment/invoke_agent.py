@@ -30,11 +30,11 @@ def invoke_agentcore_runtime(product_data: dict, review_data: dict):
 if __name__ == "__main__":
     review_data = {
         "review_id": 5,
-        "content": "이어폰 만만세",
+        "content": "Earphones are the best!",
         "rating": 3,
-        "author": "정수연",
+        "author": "Sarah Jung",
         "timestamp": "2024-01-11 16:22",
     }
-    product_data = {"name": "프리미엄 무선 이어폰", "category": "전자기기"}
+    product_data = {"name": "Premium Wireless Earphones", "category": "Electronics"}
     response_data = invoke_agentcore_runtime(product_data, review_data)
     print("Agent Response:", response_data)

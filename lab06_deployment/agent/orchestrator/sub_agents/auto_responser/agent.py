@@ -84,7 +84,7 @@ def generate_auto_response(review: str, sentiment: str) -> Dict[str, Any]:
 
     # Create a new Agent for each request
     auto_response_agent = Agent(
-        model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
         tools=[retrieve, use_llm],
         callback_handler=None,
         system_prompt=RESPONSE_SYSTEM_PROMPT

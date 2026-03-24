@@ -311,6 +311,29 @@ if st.session_state.get("show_keyword_modal", False):
 
 st.divider()
 
+# Batch analysis button
+col_batch, _ = st.columns([1, 3])
+with col_batch:
+    if st.button("⚡ Analyze All Reviews", type="primary", use_container_width=True):
+        with st.spinner("Running keyword analysis in parallel..."):
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            def analyze_comment(comment):
+                result = search_keywords(comment["content"])
+                return comment["id"], comment["content"], result
+
+            with ThreadPoolExecutor() as executor:
+                futures = [executor.submit(analyze_comment, c) for c in st.session_state.comments]
+                for future in as_completed(futures):
+                    cid, content, match_result = future.result()
+                    st.session_state.keyword_matching_results[cid] = {
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "review_text": content,
+                        "match_result": match_result,
+                    }
+        st.success("✅ All reviews analyzed!")
+        st.rerun()
+
 # Review section
 st.subheader("📝 Customer Reviews")
 
